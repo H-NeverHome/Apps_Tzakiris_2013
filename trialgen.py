@@ -52,7 +52,7 @@ def find_sample(data, iterations, orig_dat):
 
 
 
-def find_trial_list_189(generated_data, extr_data, iterations, start_point, steps):
+def find_trial_list_189(generated_data, extr_data, iterations):
     ''' This function uses the generated list of when a new facial stimuli is 
     introduced and tries to generate/ distribute the stimulus ids (1-24) over 
     the course of the experiment'''
@@ -62,7 +62,7 @@ def find_trial_list_189(generated_data, extr_data, iterations, start_point, step
    
     ''' Input into function'''
 
-    roll_avg_window = 5
+    roll_avg_window = 6
     data = generated_data
     stim_info_15 = (15,12)
     stim_info_9 = (9,1)
@@ -91,8 +91,8 @@ def find_trial_list_189(generated_data, extr_data, iterations, start_point, step
         for trial_type, trial_raw in zip(data, range(len(data))):
             trial = trial_raw+1
             '''optimization of start & step'''
-            if (trial > start_point) and counter <= 99:
-                counter +=steps
+            # if (trial > start_point) and counter <= 99:
+            #     counter +=steps
  
             if trial_type == 1: # if new face_ID 
                 try:
@@ -120,28 +120,13 @@ def find_trial_list_189(generated_data, extr_data, iterations, start_point, step
                             
                     # while 15*12 stim left, prioritize 15*12 stim
                     elif len(stim_pool_15x12) >= 1:
-                        
-                        # counter to increse prob of 9*1 stim
-                        choice_var = np.random.binomial(1,counter/100)
-                        
-                        # introduce 15x12 stim if available
-                        if (choice_var == 0) and (len(stim_pool_15x12) > 0): 
-                            select_stim_1 = np.random.choice(stim_pool_15x12)
-                            #update pres numb of stim
-                            curr_pres_num_dict[select_stim_1] +=1
-                            #append to representative list
-                            curr_pres_numb.append(curr_pres_num_dict[select_stim_1])
-                            curr_dat.append(select_stim_1)
-                           
-                                
-                         # introduce 9x1 stim if available and if trial >160
-                        elif (trial > 160) and (choice_var == 1) and (len(stim_pool_9x1) > 0):
-                            select_stim_1 = np.random.choice(stim_pool_9x1)
-                            #update pres numb of stim
-                            curr_pres_num_dict[select_stim_1] +=1
-                            #append to representative list
-                            curr_pres_numb.append(curr_pres_num_dict[select_stim_1])
-                            curr_dat.append(select_stim_1)
+                        select_stim_1 = np.random.choice(stim_pool_15x12)
+                        #update pres numb of stim
+                        curr_pres_num_dict[select_stim_1] +=1
+                        #append to representative list
+                        curr_pres_numb.append(curr_pres_num_dict[select_stim_1])
+                        curr_dat.append(select_stim_1)
+
                 except:
                     None
                             
@@ -183,33 +168,68 @@ def find_trial_list_189(generated_data, extr_data, iterations, start_point, step
                 results_best.append((curr_dat, curr_pres_numb,np.unique(curr_dat, return_counts = True),mse,new_roll_avg))
             else:
                 # check for improvement over last iteration
-                if mse <= results_best[-1][3]:
+                if mse < results_best[-1][3]:
                     results_best.append((curr_dat, curr_pres_numb,np.unique(curr_dat, return_counts = True),mse,new_roll_avg,data))                        
         else:
             None
 
-    return results_best
+    return results_best[-1]
 
-# from skopt import gp_minimize, utils, space
+# ### Define initial search grid
 # import numpy as np
+# import itertools as itt
 # import pandas as pd
+# data_example = pd.read_csv(r'D:\Apps_Tzakiris_rep\A_T_Implementation\data_lab_jansen\stimuli_list.csv')
+# data_raw_fig1_c_l = np.array(pd.read_csv(r'D:\Apps_Tzakiris_rep\A_T_Implementation\Data_Gen\Fig_1_c_left\transcribed_raw_FIG_1_c_L.csv')['0'])
+
+# res_y0 = find_trial_list_189(data_example['new_IDs'], data_raw_fig1_c_l, 10000)
+
+# # start = np.arange(140,160,5)
+# # step = np.arange(5,7,1)
+# # param_x0 = [i for i in itt.product(start,step)]
+# # param_y0 = []
+# # for counter, params in enumerate(param_x0):
+# #     print(params,params[0],params[1] )
+# #     print(str(counter) + ' / ' + str(len(param_x0)))
+# #     res_y0 = find_trial_list_189(data_example['new_IDs'], data_raw_fig1_c_l, 5000, params[0],params[1])
+# #     loss = 0
+# #     if not res_y0:
+# #         loss = 1000.0
+# #         param_y0.append(loss)
+# #     else:
+# #         loss = res_y0[-1][3]
+# #         param_y0.append(loss)
+# #     print(loss)
+
 # import seaborn as sns
 # import matplotlib.pyplot as plt
-# ### Get transcribed data from figure 1c right & left side
-# data_raw_fig1_c_r = np.array(pd.read_csv(r'D:\Apps_Tzakiris_rep\A_T_Implementation\Data_Gen\Fig_1_c_right\Fig_1_c_right.csv')['0'])
-# data_raw_fig1_c_l = np.array(pd.read_csv(r'D:\Apps_Tzakiris_rep\A_T_Implementation\Data_Gen\Fig_1_c_left\transcribed_raw_FIG_1_c_L.csv')['0'])
-# window_fig1_c_r = 10
-# window_fig1_c_l = 5
-# blocks = 6
-# trials = len(data_raw_fig1_c_r) 
-# len_block = trials/blocks
-# data_example = pd.read_csv(r'D:\Apps_Tzakiris_rep\A_T_Implementation\data_lab_jansen\stimuli_list.csv')
-# results_opt = find_trial_list_189(data_example['new_IDs'], data_raw_fig1_c_l, 20000, 142,7)
 
 # fig,axs = plt.subplots(3,1, sharex = True, sharey=True)
 # plt.xticks(np.arange(1,190,6))
 # sns.lineplot(data=data_raw_fig1_c_l,ax = axs[0])
-# sns.lineplot(data=np.array(results_opt[-1][4]),ax = axs[0])
+# sns.lineplot(data=np.array(res_y0[4]),ax = axs[0])
 
-# abc = results_opt[-1]
+
+# # from skopt import gp_minimize, utils, space
+# # import numpy as np
+# # import pandas as pd
+# # import seaborn as sns
+# # import matplotlib.pyplot as plt
+# # ### Get transcribed data from figure 1c right & left side
+# # data_raw_fig1_c_r = np.array(pd.read_csv(r'D:\Apps_Tzakiris_rep\A_T_Implementation\Data_Gen\Fig_1_c_right\Fig_1_c_right.csv')['0'])
+# # data_raw_fig1_c_l = np.array(pd.read_csv(r'D:\Apps_Tzakiris_rep\A_T_Implementation\Data_Gen\Fig_1_c_left\transcribed_raw_FIG_1_c_L.csv')['0'])
+# # window_fig1_c_r = 10
+# # window_fig1_c_l = 5
+# # blocks = 6
+# # trials = len(data_raw_fig1_c_r) 
+# # len_block = trials/blocks
+# # data_example = pd.read_csv(r'D:\Apps_Tzakiris_rep\A_T_Implementation\data_lab_jansen\stimuli_list.csv')
+# # results_opt = find_trial_list_189(data_example['new_IDs'], data_raw_fig1_c_l, 20000, 142,7)
+
+# # fig,axs = plt.subplots(3,1, sharex = True, sharey=True)
+# # plt.xticks(np.arange(1,190,6))
+# # sns.lineplot(data=data_raw_fig1_c_l,ax = axs[0])
+# # sns.lineplot(data=np.array(results_opt[-1][4]),ax = axs[0])
+
+# # abc = results_opt[-1]
 
