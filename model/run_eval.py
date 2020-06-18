@@ -7,48 +7,73 @@ Created on Wed Jun 17 13:19:12 2020
 
 
 
-
-folder_path_data = r'D:\A_T_Implementation\data_lab_jansen'
-folder_path_WD = r'D:\A_T_Implementation\impl_13_1_2019' # model_location
+# new path D:\Apps_Tzakiris_rep\A_T_Implementation\data_lab_jansen
+folder_path_data = r'D:\Apps_Tzakiris_rep\A_T_Implementation\data_lab_jansen'
+#folder_path_WD = r'D:\A_T_Implementation\impl_13_1_2019' # model_location
 ### Disable depreciation warnings from sk-learn:: needs to be in the file that calls the functiond
-import warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning)
 from skopt import gp_minimize, utils, space
 import pandas as pd
 import numpy as np
 import os
-os.chdir(folder_path_WD)
-import A_P_Model as apm
-model = apm.A_P_Model()
+# os.chdir(folder_path_WD)
+# import A_P_Model as apm
+# model = apm.A_P_Model()
 
-def warn(*args, **kwargs):
-    pass
-import warnings
-warnings.warn = warn
+# def warn(*args, **kwargs):
+#     pass
+# import warnings
+# warnings.warn = warn
 
 
 
 ### Get data 
 data = pd.read_csv(folder_path_data + r'/final_proc_dat_labjansen.csv')
 
+### Get function
+
+from model_functions import VIEW_INDIPENDENTxCONTEXT
+from tqdm import tqdm
+
+
 #### get unique IDS
 sample_answer_clms = [i for i in data.columns.values.tolist() if 'answer' in i]
 sample_perspective_clms = [i for i in data.columns.values.tolist() if 'perspective' in i]
 
 
-### idiosyncratic param space
+## idiosyncratic param space
 alpha_skl = space.Real(name='alpha', low=0, high=1) # {0,1} rate at which familiarity was aquired
 sigma_skl  = space.Real(name='sigma', low=0, high=1) # {0,1} context dependent learning rate
 beta_skl  = space.Real(name='beta', low=0.1, high=20) # {0,20} general disposition of VPS towards stochasticity of actions
 lamda_skl  = space.Real(name='lamd_a', low=0, high=2) # {0,1} maximum familiarity
 
+alpha_raw = np.around(np.linspace(0.1, 0.9, num=10),decimals = 2)
+sigma_raw = np.around(np.linspace(0.1, 0.9, num=10),decimals = 2)
+beta_raw = np.around(np.linspace(0.1, 19.9, num=40),decimals = 2)
+lamda_raw = np.around(np.linspace(0.1, 1.9, num=20),decimals = 2)
+import itertools as it
+    
+res_space = [i for i in it.product(alpha_raw,sigma_raw, beta_raw, lamda_raw)]
+
+
+# alpha_skl = space.Categorical(categories = alpha_raw,name='alpha') # {0,1} rate at which familiarity was aquired
+# sigma_skl  = space.Categorical(categories = sigma_raw,name='sigma') # {0,1} context dependent learning rate
+# beta_skl  = space.Categorical(categories = beta_raw,name='beta') # {0,20} general disposition of VPS towards stochasticity of actions
+# lamda_skl  = space.Categorical(categories = lamda_raw,name='lamd_a') # {0,1} maximum familiarity
+
+
 ### params for each model
 dimensions = [alpha_skl, sigma_skl, beta_skl, lamda_skl]
 dimensions_wo_context = [alpha_skl, beta_skl, lamda_skl]
 
-
+@utils.use_named_args(dimensions=dimensions)
+def VIEW_INDIPENDENTxCONTEXT_optim(alpha, sigma, beta, lamd_a):
+    result = VIEW_INDIPENDENTxCONTEXT(alpha, sigma, beta, lamd_a, VPN_output, new_ID, numb_prev_presentations, stim_IDs)
+    model_ev = result[0]
+    return -1*model_ev
 ###############################################################################################################
 #function optim
+res = []
+
 model_ev_VIEW_INDIPENDENTxCONTEXT_optim = 0
 model_ev_VIEW_DEPENDENT_optim = 0
 model_ev_VIEW_DEPENDENTxCONTEXT_DEPENDENT_optim = 0
@@ -63,7 +88,7 @@ n_rand_start = 1
 for i,j in zip(sample_answer_clms,sample_perspective_clms):
     print(i)
     #func calls & rand starts
-    n_calls = 200
+    n_calls = 5100
     n_rand_start = 100
     # data import
     stim_IDs = data['stim_IDs'] #stimulus IDs of winning model 
@@ -71,20 +96,36 @@ for i,j in zip(sample_answer_clms,sample_perspective_clms):
     numb_prev_presentations = data.iloc[:,3] #number_of_prev_presentations
     stim_IDs_perspective = data[str(j)] #view dependent
     VPN_output = data[str(i)] #VPN answers
-    
+    res_y0=[]
     ### Disable depreciation warnings from sk-learn:: needs to be in the file that calls the functiond
-    import warnings
-    warnings.filterwarnings("ignore", category=DeprecationWarning) 
-    ### time execution  
+    for params in tqdm(res_space):
+        result = VIEW_INDIPENDENTxCONTEXT(params[0], params[1], params[2], params[3], VPN_output, new_ID, numb_prev_presentations, stim_IDs)
+        res_y0.append(result[0])
+
+
+    ## time execution  
     import datetime
-    # optim
+    ##optim
     print(datetime.datetime.now().time())
     print('Model 1')
-    res1 = gp_minimize(func= VIEW_INDIPENDENTxCONTEXT_optim,dimensions=dimensions, n_calls=n_calls,n_jobs=-1,n_random_starts = n_rand_start,noise =1e-10, verbose = True,acq_optimizer= 'lbfgs', acq_func = 'gp_hedge',n_restarts_optimizer = 10, n_points = 20000 )
+    res1 = gp_minimize(func=VIEW_INDIPENDENTxCONTEXT_optim,
+                       dimensions=dimensions,
+                       n_calls=n_calls,
+                       x0= res_space,
+                       y0 = res_y0,
+                       n_jobs=-1,
+                       n_random_starts = 0,
+                       noise =1e-10, 
+                       verbose = True,
+                       acq_optimizer= 'sampling', 
+                       acq_func = 'gp_hedge',
+                       n_restarts_optimizer = 10, 
+                       n_points = 20000 )
+    
     print(res1['fun'], res1['x'])
     model_ev_VIEW_INDIPENDENTxCONTEXT_optim += res1['fun']
     print(datetime.datetime.now().time())
-    
+    '''
     print('Model 2')
     res2 = gp_minimize(func= VIEW_DEPENDENT_optim,dimensions=dimensions_wo_context, n_calls=n_calls,n_jobs=-1,n_random_starts = n_rand_start,noise =1e-10  )
     print(res2['fun'], res2['x'])
@@ -111,6 +152,8 @@ for i,j in zip(sample_answer_clms,sample_perspective_clms):
     model_ev_VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT_optim += res6['fun']
     
     results_history_optim.append((res1,res2,res3,res4,res5,res6))
+    '''
+'''
 #################################################### Visualize ################################################
 
 model_names = ['VIEW_INDIPENDENTxCONTEXT', 'VIEW_DEPENDENT', 'VIEW_DEPENDENTxCONTEXT_DEPENDENT', 'VIEW_INDEPENDENT', 'VIEW_INDEPENDENTxVIEW_DEPENDENT', 'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT']    
@@ -133,3 +176,5 @@ All_dat.to_csv(folder_path_WD + '/prelim_res.csv')
 
 #gradienten berechen -> autograd -> https://github.com/HIPS/autograd
 # minimize(method=’L-BFGS-B’) -> https://docs.scipy.org/doc/scipy/reference/optimize.minimize-lbfgsb.html
+
+'''
