@@ -8,7 +8,7 @@ Created on Wed Jun 17 13:19:12 2020
 
 
 # new path D:\Apps_Tzakiris_rep\A_T_Implementation\data_lab_jansen
-folder_path_data = r'D:\Apps_Tzakiris_rep\A_T_Implementation\data_lab_jansen'
+folder_path_data = r'E:\Opt old\main_results'
 #folder_path_WD = r'D:\A_T_Implementation\impl_13_1_2019' # model_location
 ### Disable depreciation warnings from sk-learn:: needs to be in the file that calls the functiond
 from skopt import gp_minimize, utils, space
@@ -39,7 +39,7 @@ lamda_skl  = space.Real(name='lamd_a', low=0, high=2) # {0,1} maximum familiarit
 
 alpha_raw = np.around(np.linspace(0.1, 0.9, num=5),decimals = 2)
 sigma_raw = np.around(np.linspace(0.1, 0.9, num=5),decimals = 2)
-beta_raw = np.around(np.linspace(0.1, 19.9, num=20),decimals = 2)
+beta_raw = np.around(np.linspace(0.1, 19.9, num=10),decimals = 2)
 lamda_raw = np.around(np.linspace(0.1, 1.9, num=10),decimals = 2)
 import itertools as it
     
@@ -59,7 +59,7 @@ dimensions_wo_context = [alpha_skl, beta_skl, lamda_skl]
 
 ### Define Loss Functions 
 
-#@utils.use_named_args(dimensions=dimensions)
+@utils.use_named_args(dimensions=dimensions)
 def VIEW_INDIPENDENTxCONTEXT_optim(alpha, sigma, beta, lamd_a):
     result = VIEW_INDIPENDENTxCONTEXT(alpha, sigma, beta, lamd_a, VPN_output, new_ID, numb_prev_presentations, stim_IDs)
     model_ev = result[0]
@@ -109,7 +109,7 @@ for i,j in zip(sample_answer_clms,sample_perspective_clms):
                         n_calls=n_calls,
                         x0= res_space,
                         y0 = res_y0,
-                        n_jobs=-1,
+                        n_jobs=8,
                         n_random_starts = 0,
                         noise =1e-10, 
                         verbose = True,
