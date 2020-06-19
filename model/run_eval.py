@@ -14,7 +14,7 @@ folder_path_data = r'D:\Apps_Tzakiris_rep\A_T_Implementation\data_lab_jansen'
 from skopt import gp_minimize, utils, space
 import pandas as pd
 import numpy as np
-import os
+import datetime
 
 
 ### Get data 
@@ -59,7 +59,7 @@ dimensions_wo_context = [alpha_skl, beta_skl, lamda_skl]
 
 ### Define Loss Functions 
 
-@utils.use_named_args(dimensions=dimensions)
+#@utils.use_named_args(dimensions=dimensions)
 def VIEW_INDIPENDENTxCONTEXT_optim(alpha, sigma, beta, lamd_a):
     result = VIEW_INDIPENDENTxCONTEXT(alpha, sigma, beta, lamd_a, VPN_output, new_ID, numb_prev_presentations, stim_IDs)
     model_ev = result[0]
@@ -96,37 +96,29 @@ for i,j in zip(sample_answer_clms,sample_perspective_clms):
     stim_IDs_perspective = data[str(j)] #view dependent
     VPN_output = data[str(i)] #VPN answers
     res_y0=[]
-    ### Disable depreciation warnings from sk-learn:: needs to be in the file that calls the functiond
-    # for params in tqdm(res_space):
-    #     result = VIEW_INDIPENDENTxCONTEXT(params[0], params[1], params[2], params[3], VPN_output, new_ID, numb_prev_presentations, stim_IDs)
-    #     res_y0.append(result[0])
-    import scipy
-    res = scipy.optimize.minimize(VIEW_INDIPENDENTxCONTEXT_optim_exp,
-                                  method = 'L-BFGS-B',
-                                  jac='2-point',
-                                  x0 = np.array([0.5,0.5,10,1]),
-                                  bounds = [(0,1),(0,1),(1,20),(0,2)]
-                                  )
-    # ## time execution  
-    # import datetime
-    # ##optim
-    # print(datetime.datetime.now().time())
-    # print('Model 1')
-    # res1 = gp_minimize(func=VIEW_INDIPENDENTxCONTEXT_optim,
-    #                     dimensions=dimensions,
-    #                     n_calls=n_calls,
-    #                     x0= res_space,
-    #                     y0 = res_y0,
-    #                     n_jobs=-1,
-    #                     n_random_starts = 0,
-    #                     noise =1e-10, 
-    #                     verbose = True,
-    #                     acq_optimizer= 'sampling', 
-    #                     acq_func = 'gp_hedge')
+    for params in tqdm(res_space):
+        res_x0 = VIEW_INDIPENDENTxCONTEXT_optim_exp(params)
+        res_y0.append(res_x0)
+    ## time execution  
+
+    ##optim
+    #print(datetime.datetime.now().time())
+    print('Model 1')
+    res1 = gp_minimize(func=VIEW_INDIPENDENTxCONTEXT_optim,
+                        dimensions=dimensions,
+                        n_calls=n_calls,
+                        x0= res_space,
+                        y0 = res_y0,
+                        n_jobs=-1,
+                        n_random_starts = 0,
+                        noise =1e-10, 
+                        verbose = True,
+                        acq_optimizer= 'lbfgs', 
+                        acq_func = 'gp_hedge')
     
-    # print(res1['fun'], res1['x'])
-    # model_ev_VIEW_INDIPENDENTxCONTEXT_optim += res1['fun']
-    # print(datetime.datetime.now().time())
+    print(res1['fun'], res1['x'])
+    model_ev_VIEW_INDIPENDENTxCONTEXT_optim += res1['fun']
+    #print(datetime.datetime.now().time())
     '''
     print('Model 2')
     res2 = gp_minimize(func= VIEW_DEPENDENT_optim,dimensions=dimensions_wo_context, n_calls=n_calls,n_jobs=-1,n_random_starts = n_rand_start,noise =1e-10  )
@@ -178,5 +170,18 @@ All_dat.to_csv(folder_path_WD + '/prelim_res.csv')
 
 #gradienten berechen -> autograd -> https://github.com/HIPS/autograd
 # minimize(method=’L-BFGS-B’) -> https://docs.scipy.org/doc/scipy/reference/optimize.minimize-lbfgsb.html
+
+### LBFGS Implement
+
+    from scipy.optimize import minimize
+    res = minimize(VIEW_INDIPENDENTxCONTEXT_optim_exp,
+                                  method = 'L-BFGS-B',
+                                  jac='2-point',
+                                  x0 = [0.5,0.5,10,1],
+                                  bounds = [(0.,1.),(0.,1.),(1.,20.),(0.,2.)],
+                                  options = {'disp':True}
+                                  )
+
+
 
 '''
