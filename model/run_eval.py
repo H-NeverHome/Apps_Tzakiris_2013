@@ -15,7 +15,14 @@ from skopt import gp_minimize, utils, space
 import pandas as pd
 import numpy as np
 import datetime
+import yabox as yb
 
+# import warnings filter
+from warnings import simplefilter
+# ignore all future warnings
+simplefilter(action='ignore', category=FutureWarning)
+# Import the DE implementations
+from yabox.algorithms import DE, PDE
 
 ### Get data 
 data = pd.read_csv(folder_path_data + r'/final_proc_dat_labjansen.csv')
@@ -37,34 +44,36 @@ sigma_skl  = space.Real(name='sigma', low=0, high=1) # {0,1} context dependent l
 beta_skl  = space.Real(name='beta', low=0.1, high=20) # {0,20} general disposition of VPS towards stochasticity of actions
 lamda_skl  = space.Real(name='lamd_a', low=0, high=2) # {0,1} maximum familiarity
 
-alpha_raw = np.around(np.linspace(0.1, 0.9, num=5),decimals = 2)
-sigma_raw = np.around(np.linspace(0.1, 0.9, num=5),decimals = 2)
-beta_raw = np.around(np.linspace(0.1, 19.9, num=20),decimals = 2)
-lamda_raw = np.around(np.linspace(0.1, 1.9, num=10),decimals = 2)
-import itertools as it
-    
-res_space = [list(i) for i in it.product(alpha_raw,sigma_raw, beta_raw, lamda_raw)]
+alpha_raw = np.around(np.linspace(0, 0.9, num=100),decimals = 2)
+sigma_raw = np.around(np.linspace(0, 0.9, num=100),decimals = 2)
+beta_raw = np.around(np.linspace(0.1, 19.9, num=200),decimals = 2)
+lamda_raw = np.around(np.linspace(0, 1.9, num=200),decimals = 2)
 
+alpha_cat = space.Categorical(categories=alpha_raw,name='alpha_cat',transform = 'identity') # {0,1} rate at which familiarity was aquired
+sigma_cat  = space.Categorical(categories=sigma_raw,name='sigma_cat',transform = 'identity') # {0,1} context dependent learning rate
+beta_cat  = space.Categorical(categories=beta_raw,name='beta_cat',transform = 'identity') # {0,20} general disposition of VPS towards stochasticity of actions
+lamda_cat = space.Categorical(categories=lamda_raw,name='lamda_cat',transform = 'identity') # {0,1} maximum familiarity
 
-# alpha_skl = space.Categorical(categories = alpha_raw,name='alpha') # {0,1} rate at which familiarity was aquired
-# sigma_skl  = space.Categorical(categories = sigma_raw,name='sigma') # {0,1} context dependent learning rate
-# beta_skl  = space.Categorical(categories = beta_raw,name='beta') # {0,20} general disposition of VPS towards stochasticity of actions
-# lamda_skl  = space.Categorical(categories = lamda_raw,name='lamd_a') # {0,1} maximum familiarity
-
+example = alpha_cat.rvs(20)
 
 ### params for each model
 dimensions = [alpha_skl, sigma_skl, beta_skl, lamda_skl]
-dimensions_wo_context = [alpha_skl, beta_skl, lamda_skl]
+dimensions_cat = [alpha_cat, sigma_cat, beta_cat, lamda_cat]
+#dimensions_wo_context = [alpha_skl, beta_skl, lamda_skl]
 
 
 ### Define Loss Functions 
 
-#@utils.use_named_args(dimensions=dimensions)
+@utils.use_named_args(dimensions=dimensions)
 def VIEW_INDIPENDENTxCONTEXT_optim(alpha, sigma, beta, lamd_a):
     result = VIEW_INDIPENDENTxCONTEXT(alpha, sigma, beta, lamd_a, VPN_output, new_ID, numb_prev_presentations, stim_IDs)
     model_ev = result[0]
     return -1*model_ev
-#@utils.use_named_args(dimensions=dimensions)
+@utils.use_named_args(dimensions=dimensions_cat)
+def VIEW_INDIPENDENTxCONTEXT_optim_cat(alpha_cat, sigma_cat, beta_cat, lamda_cat):
+    result = VIEW_INDIPENDENTxCONTEXT(alpha_cat, sigma_cat, beta_cat, lamda_cat, VPN_output, new_ID, numb_prev_presentations, stim_IDs)
+    model_ev = result[0]
+    return -1*model_ev
 def VIEW_INDIPENDENTxCONTEXT_optim_exp(x):
     result = VIEW_INDIPENDENTxCONTEXT(x[0], x[1], x[2], x[3], VPN_output, new_ID, numb_prev_presentations, stim_IDs)
     model_ev = result[0]
@@ -84,11 +93,11 @@ n_calls = 3
 n_rand_start = 1
 
  # total model evidence
-for i,j in zip(sample_answer_clms,sample_perspective_clms):
+for i,j in zip(sample_answer_clms[0:2],sample_perspective_clms[0:2]):
     print(i)
     #func calls & rand starts
-    n_calls = 5100
-    n_rand_start = 100
+    n_calls = 500
+    n_rand_start = 200
     # data import
     stim_IDs = data['stim_IDs'] #stimulus IDs of winning model 
     new_ID = data['new_IDs'] #trials where new ID is introduced 
@@ -96,29 +105,43 @@ for i,j in zip(sample_answer_clms,sample_perspective_clms):
     stim_IDs_perspective = data[str(j)] #view dependent
     VPN_output = data[str(i)] #VPN answers
     res_y0=[]
-    for params in tqdm(res_space):
-        res_x0 = VIEW_INDIPENDENTxCONTEXT_optim_exp(params)
-        res_y0.append(res_x0)
+    
+    # for params in tqdm(res_space):
+    #     res_x0 = VIEW_INDIPENDENTxCONTEXT_optim_exp(params)
+    #     res_y0.append(res_x0)
     ## time execution  
 
     ##optim
-    #print(datetime.datetime.now().time())
+    de = DE(VIEW_INDIPENDENTxCONTEXT_optim_exp, [(0, 1),(0, 1),(1,20),(0,2)], maxiters=200).solve()
+
+
     print('Model 1')
     res1 = gp_minimize(func=VIEW_INDIPENDENTxCONTEXT_optim,
                         dimensions=dimensions,
                         n_calls=n_calls,
-                        x0= res_space,
-                        y0 = res_y0,
+                        random_state = 1993,
                         n_jobs=-1,
-                        n_random_starts = 0,
+                        n_random_starts = n_rand_start,
                         noise =1e-10, 
                         verbose = True,
                         acq_optimizer= 'lbfgs', 
                         acq_func = 'gp_hedge')
     
-    print(res1['fun'], res1['x'])
-    model_ev_VIEW_INDIPENDENTxCONTEXT_optim += res1['fun']
-    #print(datetime.datetime.now().time())
+    res2 = gp_minimize(func=VIEW_INDIPENDENTxCONTEXT_optim_cat,
+                    dimensions=dimensions_cat,
+                    n_calls=n_calls,
+                    random_state = 1993,
+                    n_jobs=-1,
+                    n_random_starts = n_rand_start,
+                    noise =1e-10, 
+                    verbose = True,
+                    acq_optimizer= 'sampling', 
+                    acq_func = 'gp_hedge')
+    
+    results_history_optim.append((i,('Bayesopt',res1),('Bayesopt_cat',res2),('Different Evo',de)))
+    results_history_optim.append(('Bayesopt_cat',i,res2))
+    results_history_optim.append(('Different Evo',i,de))
+
     '''
     print('Model 2')
     res2 = gp_minimize(func= VIEW_DEPENDENT_optim,dimensions=dimensions_wo_context, n_calls=n_calls,n_jobs=-1,n_random_starts = n_rand_start,noise =1e-10  )
