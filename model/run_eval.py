@@ -8,7 +8,7 @@ Created on Wed Jun 17 13:19:12 2020
 
 
 # new path D:\Apps_Tzakiris_rep\A_T_Implementation\data_lab_jansen
-folder_path_data = r'D:\Apps_Tzakiris_rep\A_T_Implementation\data_lab_jansen'
+folder_path_data = r'J:\main_results'
 #folder_path_WD = r'D:\A_T_Implementation\impl_13_1_2019' # model_location
 ### Disable depreciation warnings from sk-learn:: needs to be in the file that calls the functiond
 from skopt import gp_minimize, utils, space
@@ -89,15 +89,17 @@ model_ev_VIEW_INDEPENDENT_optim = 0
 model_ev_VIEW_INDEPENDENTxVIEW_DEPENDENT = 0
 model_ev_VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT_optim = 0
 results_history_optim = []
-n_calls = 3
-n_rand_start = 1
+n_calls = 300
+n_rand_start = 200  
+n_jobs = 8
+noise = 1e-10
+rnd_state = 1993
 
  # total model evidence
 for i,j in zip(sample_answer_clms[0:2],sample_perspective_clms[0:2]):
     print(i)
     #func calls & rand starts
-    n_calls = 500
-    n_rand_start = 200
+
     # data import
     stim_IDs = data['stim_IDs'] #stimulus IDs of winning model 
     new_ID = data['new_IDs'] #trials where new ID is introduced 
@@ -112,17 +114,17 @@ for i,j in zip(sample_answer_clms[0:2],sample_perspective_clms[0:2]):
     ## time execution  
 
     ##optim
-    de = DE(VIEW_INDIPENDENTxCONTEXT_optim_exp, [(0, 1),(0, 1),(1,20),(0,2)], maxiters=200).solve()
+    de = DE(VIEW_INDIPENDENTxCONTEXT_optim_exp, [(0, 1),(0, 1),(1,20),(0,2)], maxiters=1000).solve()
 
 
     print('Model 1')
     res1 = gp_minimize(func=VIEW_INDIPENDENTxCONTEXT_optim,
                         dimensions=dimensions,
                         n_calls=n_calls,
-                        random_state = 1993,
-                        n_jobs=-1,
+                        random_state = rnd_state,
+                        n_jobs=n_jobs,
                         n_random_starts = n_rand_start,
-                        noise =1e-10, 
+                        noise = noise, 
                         verbose = True,
                         acq_optimizer= 'lbfgs', 
                         acq_func = 'gp_hedge')
@@ -130,17 +132,15 @@ for i,j in zip(sample_answer_clms[0:2],sample_perspective_clms[0:2]):
     res2 = gp_minimize(func=VIEW_INDIPENDENTxCONTEXT_optim_cat,
                     dimensions=dimensions_cat,
                     n_calls=n_calls,
-                    random_state = 1993,
-                    n_jobs=-1,
+                    random_state = rnd_state,
+                    n_jobs=n_jobs,
                     n_random_starts = n_rand_start,
-                    noise =1e-10, 
+                    noise = noise, 
                     verbose = True,
                     acq_optimizer= 'sampling', 
                     acq_func = 'gp_hedge')
     
     results_history_optim.append((i,('Bayesopt',res1),('Bayesopt_cat',res2),('Different Evo',de)))
-    results_history_optim.append(('Bayesopt_cat',i,res2))
-    results_history_optim.append(('Different Evo',i,de))
 
     '''
     print('Model 2')
