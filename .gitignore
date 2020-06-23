@@ -1,3 +1,10 @@
 
 .ipynb_checkpoints/datagen-checkpoint.ipynb
 __pycache__/trialgen.cpython-37.pyc
+model/outcmaes/axlen.dat
+model/outcmaes/axlencorr.dat
+model/outcmaes/axlenprec.dat
+model/outcmaes/fit.dat
+model/outcmaes/stddev.dat
+model/outcmaes/xmean.dat
+model/outcmaes/xrecentbest.dat
