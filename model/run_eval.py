@@ -29,7 +29,7 @@ data = pd.read_csv(folder_path_data + r'/final_proc_dat_labjansen.csv')
 
 ### Get function
 
-from model_functions import VIEW_INDIPENDENTxCONTEXT
+from model_functions import VIEW_INDIPENDENTxCONTEXT,VIEW_DEPENDENT
 from tqdm import tqdm
 
 
@@ -59,7 +59,7 @@ example = alpha_cat.rvs(20)
 ### params for each model
 dimensions = [alpha_skl, sigma_skl, beta_skl, lamda_skl]
 dimensions_cat = [alpha_cat, sigma_cat, beta_cat, lamda_cat]
-#dimensions_wo_context = [alpha_skl, beta_skl, lamda_skl]
+dimensions_wo_context = [alpha_cat, beta_cat, lamda_cat]
 
 
 ### Define Loss Functions 
@@ -78,6 +78,15 @@ def VIEW_INDIPENDENTxCONTEXT_optim_exp(x):
     result = VIEW_INDIPENDENTxCONTEXT(x[0], x[1], x[2], x[3], VPN_output, new_ID, numb_prev_presentations, stim_IDs)
     model_ev = result[0]
     return -1*model_ev
+
+### View Dependent
+
+@utils.use_named_args(dimensions=dimensions_wo_context)
+def VIEW_DEPENDENT_optim(alpha_cat, beta_cat, lamda_cat):  
+    result = VIEW_DEPENDENT(alpha_cat, beta_cat, lamda_cat, VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective)
+    model_ev = result[0]
+    return -1*model_ev
+
 ###############################################################################################################
 #function optim
 res = []
@@ -89,13 +98,12 @@ model_ev_VIEW_INDEPENDENT_optim = 0
 model_ev_VIEW_INDEPENDENTxVIEW_DEPENDENT = 0
 model_ev_VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT_optim = 0
 results_history_optim = []
-n_calls = 300
+n_calls = 350
 n_rand_start = 200  
 n_jobs = 8
 noise = 1e-10
 rnd_state = 1993
 
- # total model evidence
 for i,j in zip(sample_answer_clms[0:2],sample_perspective_clms[0:2]):
     print(i)
     #func calls & rand starts
@@ -107,29 +115,25 @@ for i,j in zip(sample_answer_clms[0:2],sample_perspective_clms[0:2]):
     stim_IDs_perspective = data[str(j)] #view dependent
     VPN_output = data[str(i)] #VPN answers
     res_y0=[]
+
+
+    # #optim
+    # de = DE(VIEW_INDIPENDENTxCONTEXT_optim_exp, [(0, 1),(0, 1),(1,20),(0,2)], maxiters=1000).solve()
+
+
+    # print('Model 1')
+    # res1 = gp_minimize(func=VIEW_INDIPENDENTxCONTEXT_optim,
+    #                     dimensions=dimensions,
+    #                     n_calls=n_calls,
+    #                     random_state = rnd_state,
+    #                     n_jobs=n_jobs,
+    #                     n_random_starts = n_rand_start,
+    #                     noise = noise, 
+    #                     verbose = True,
+    #                     acq_optimizer= 'lbfgs', 
+    #                     acq_func = 'gp_hedge')
     
-    # for params in tqdm(res_space):
-    #     res_x0 = VIEW_INDIPENDENTxCONTEXT_optim_exp(params)
-    #     res_y0.append(res_x0)
-    ## time execution  
-
-    ##optim
-    de = DE(VIEW_INDIPENDENTxCONTEXT_optim_exp, [(0, 1),(0, 1),(1,20),(0,2)], maxiters=1000).solve()
-
-
-    print('Model 1')
-    res1 = gp_minimize(func=VIEW_INDIPENDENTxCONTEXT_optim,
-                        dimensions=dimensions,
-                        n_calls=n_calls,
-                        random_state = rnd_state,
-                        n_jobs=n_jobs,
-                        n_random_starts = n_rand_start,
-                        noise = noise, 
-                        verbose = True,
-                        acq_optimizer= 'lbfgs', 
-                        acq_func = 'gp_hedge')
-    
-    res2 = gp_minimize(func=VIEW_INDIPENDENTxCONTEXT_optim_cat,
+    res2a = gp_minimize(func=VIEW_INDIPENDENTxCONTEXT_optim_cat,
                     dimensions=dimensions_cat,
                     n_calls=n_calls,
                     random_state = rnd_state,
@@ -139,8 +143,19 @@ for i,j in zip(sample_answer_clms[0:2],sample_perspective_clms[0:2]):
                     verbose = True,
                     acq_optimizer= 'sampling', 
                     acq_func = 'gp_hedge')
-    
-    results_history_optim.append((i,('Bayesopt',res1),('Bayesopt_cat',res2),('Different Evo',de)))
+    res2b = gp_minimize(func=VIEW_DEPENDENT_optim,
+                    dimensions=dimensions_wo_context,
+                    n_calls=n_calls,
+                    random_state = rnd_state,
+                    n_jobs=n_jobs,
+                    n_random_starts = n_rand_start,
+                    noise = noise, 
+                    verbose = True,
+                    acq_optimizer= 'sampling', 
+                    acq_func = 'gp_hedge')
+    results_history_optim.append((i,('M1',res2a),('M2', res2b)))
+
+    # results_history_optim.append((i,('Bayesopt',res1),('Bayesopt_cat',res2),('Different Evo',de)))
 
     '''
     print('Model 2')
@@ -208,3 +223,5 @@ All_dat.to_csv(folder_path_WD + '/prelim_res.csv')
 
 
 '''
+
+#rosen = cma.ff.rosen((2,4))
