@@ -7,7 +7,7 @@ Created on Wed Jun 24 10:48:29 2020
 
 
 
-from model_functions import VIEW_INDIPENDENTxCONTEXT,VIEW_DEPENDENT,VIEW_DEPENDENTxCONTEXT_DEPENDENT,VIEW_INDEPENDENT
+from model_functions import VIEW_INDIPENDENTxCONTEXT,VIEW_DEPENDENT,VIEW_DEPENDENTxCONTEXT_DEPENDENT,VIEW_INDEPENDENT,VIEW_INDEPENDENTxVIEW_DEPENDENT,VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT
 folder_path_data = r'J:\main_results'
 
 ### Disable depreciation warnings from sk-learn:: needs to be in the file that calls the functiond
@@ -55,12 +55,43 @@ beta_cat  = space.Categorical(categories=beta_raw,name='beta_cat',transform = 'i
 lamda_cat = space.Categorical(categories=lamda_raw,name='lamda_cat',transform = 'identity') # {0,1} maximum familiarity
 
 example = alpha_cat.rvs(1)[0]
+beta_cat.rvs(1)[0]
+lamda_cat.rvs(1)[0]
 
 params_m_1 = [.38,.74,5.27,.64]
 params_m_2 = [.02,.16,18.41,1.44]
 params_m_3 = [.29,2.89,.62]
 params_m_4 = [.38,1.19,.74]
-m_1 = VIEW_INDIPENDENTxCONTEXT(params_m_1[0], params_m_1[1], params_m_1[2], params_m_1[3], VPN_output, new_ID, numb_prev_presentations, stim_IDs, True)
-m_2 = VIEW_DEPENDENT(params_m_3[0], params_m_3[1], params_m_3[2], VPN_output, new_ID, stim_IDs, stim_IDs_perspective, True)
-m_3 = VIEW_DEPENDENTxCONTEXT_DEPENDENT(params_m_2[0], params_m_2[1], params_m_2[2], params_m_2[3], VPN_output, new_ID, stim_IDs, stim_IDs_perspective, True)
-m_4 = VIEW_INDEPENDENT(params_m_4[0], params_m_4[1], params_m_4[2], VPN_output, new_ID, numb_prev_presentations, stim_IDs,True)
+params_m_5 = [.83,.13,.8,1.82,1.02]
+params_m_6 = [.55,.02,.33,.5,1.07,1.49]
+m_1 = VIEW_INDIPENDENTxCONTEXT(params_m_1[0],
+                               params_m_1[1],
+                               params_m_1[2],
+                               params_m_1[3], VPN_output, new_ID, numb_prev_presentations, stim_IDs, True)
+
+m_2 = VIEW_DEPENDENT(params_m_3[0],
+                     params_m_3[1],
+                     params_m_3[2], VPN_output, new_ID, stim_IDs, stim_IDs_perspective, True)
+
+m_3 = VIEW_DEPENDENTxCONTEXT_DEPENDENT(params_m_2[0],
+                                       params_m_2[1],
+                                       params_m_2[2],
+                                       params_m_2[3], VPN_output, new_ID, stim_IDs, stim_IDs_perspective, True)
+
+m_4 = VIEW_INDEPENDENT(params_m_4[0],
+                       params_m_4[1],
+                       params_m_4[2], VPN_output, new_ID, numb_prev_presentations, stim_IDs,True)
+
+m_5 = VIEW_INDEPENDENTxVIEW_DEPENDENT(params_m_5[0], 
+                                      params_m_5[1], 
+                                      params_m_5[2],
+                                      params_m_5[3],
+                                      params_m_5[4],
+                                      VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, True)
+
+m_6 = VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT(params_m_6[0],
+                                              params_m_6[1],
+                                              params_m_6[2],
+                                              params_m_6[3],
+                                              params_m_6[4],
+                                              params_m_6[5], VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, True)

@@ -69,7 +69,7 @@ example = alpha_cat.rvs(20)
 
 dimensions_win_cont = [alpha_skl, sigma_skl, beta_skl, lamda_skl]
 dimensions_win_cat = [alpha_cat, sigma_cat, beta_cat, lamda_cat]
-example = dimensions_win_cat.rvs(20)
+
 # Loss functions
 
 @utils.use_named_args(dimensions=dimensions_win_cont)
@@ -79,8 +79,8 @@ def VIEW_INDIPENDENTxCONTEXT_optim_cont(alpha, sigma, beta, lamd_a):
     return -1*model_ev
 @utils.use_named_args(dimensions=dimensions_win_cat)
 def VIEW_INDIPENDENTxCONTEXT_optim_cat(alpha_cat, sigma_cat, beta_cat, lamda_cat):
-    result = VIEW_INDIPENDENTxCONTEXT(alpha_cat, sigma_cat, beta_cat, lamda_cat, VPN_output, new_ID, numb_prev_presentations, stim_IDs)
-    model_ev = result[0]
+    result = VIEW_INDIPENDENTxCONTEXT(alpha_cat, sigma_cat, beta_cat, lamda_cat, VPN_output, new_ID, numb_prev_presentations, stim_IDs, False)
+    model_ev = result
     return -1*model_ev
 # def VIEW_INDIPENDENTxCONTEXT_optim_exp(x):
 #     result = VIEW_INDIPENDENTxCONTEXT(x[0], x[1], x[2], x[3], VPN_output, new_ID, numb_prev_presentations, stim_IDs)
@@ -92,11 +92,12 @@ def VIEW_INDIPENDENTxCONTEXT_optim_cat(alpha_cat, sigma_cat, beta_cat, lamda_cat
 # dimensions
 dim_view_dep_cat = [alpha_cat, beta_cat, lamda_cat]
 dim_view_dep_cont = [alpha_skl, beta_skl, lamda_skl]
+
 # Loss function
 @utils.use_named_args(dimensions=dim_view_dep_cat)
 def VIEW_DEPENDENT_optim_cat(alpha_cat, beta_cat, lamda_cat):  
-    result = VIEW_DEPENDENT(alpha_cat, beta_cat, lamda_cat, VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective)
-    model_ev = result[0]
+    result = VIEW_DEPENDENT(alpha_cat, beta_cat, lamda_cat, VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, False)
+    model_ev = result
     return -1*model_ev
 # discrete original space
 
@@ -180,6 +181,7 @@ for i,j in zip(sample_answer_clms[0:2],sample_perspective_clms[0:2]):
                     verbose = True,
                     acq_optimizer= 'sampling', 
                     acq_func = 'gp_hedge')
+    
     res2b = gp_minimize(func=VIEW_DEPENDENT_optim_cat,
                     dimensions=dim_view_dep_cat,
                     n_calls=n_calls,
