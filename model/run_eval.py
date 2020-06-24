@@ -29,7 +29,7 @@ data = pd.read_csv(folder_path_data + r'/final_proc_dat_labjansen.csv')
 
 ### Get function
 
-from model_functions import VIEW_INDIPENDENTxCONTEXT,VIEW_DEPENDENT
+from model_functions import VIEW_INDIPENDENTxCONTEXT,VIEW_DEPENDENT,VIEW_DEPENDENTxCONTEXT_DEPENDENT
 from tqdm import tqdm
 
 
@@ -56,13 +56,15 @@ lamda_cat = space.Categorical(categories=lamda_raw,name='lamda_cat',transform = 
 
 example = alpha_cat.rvs(20)
 
-### params for each model
+### Param Spaces for each model
 dimensions = [alpha_skl, sigma_skl, beta_skl, lamda_skl]
 dimensions_cat = [alpha_cat, sigma_cat, beta_cat, lamda_cat]
-dimensions_wo_context = [alpha_cat, beta_cat, lamda_cat]
+dim_view_dep = [alpha_cat, beta_cat, lamda_cat]
 
 
-### Define Loss Functions 
+###### Define Loss Functions 
+
+### VIEW_INDIPENDENTxCONTEXT
 
 @utils.use_named_args(dimensions=dimensions)
 def VIEW_INDIPENDENTxCONTEXT_optim(alpha, sigma, beta, lamd_a):
@@ -81,9 +83,17 @@ def VIEW_INDIPENDENTxCONTEXT_optim_exp(x):
 
 ### View Dependent
 
-@utils.use_named_args(dimensions=dimensions_wo_context)
+@utils.use_named_args(dimensions=dim_view_dep)
 def VIEW_DEPENDENT_optim(alpha_cat, beta_cat, lamda_cat):  
     result = VIEW_DEPENDENT(alpha_cat, beta_cat, lamda_cat, VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective)
+    model_ev = result[0]
+    return -1*model_ev
+
+###VIEW_DEPENDENTxCONTEXT_DEPENDENT_optim
+
+@utils.use_named_args(dimensions=dimensions)
+def VIEW_DEPENDENTxCONTEXT_DEPENDENT_optim(alpha, sigma, beta, lamd_a):
+    result = VIEW_DEPENDENTxCONTEXT_DEPENDENT(alpha, sigma, beta, lamd_a, VPN_output, new_ID, stim_IDs, stim_IDs_perspective)
     model_ev = result[0]
     return -1*model_ev
 
