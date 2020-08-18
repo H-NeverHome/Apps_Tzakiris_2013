@@ -47,7 +47,6 @@ def VIEW_INDIPENDENTxCONTEXT(alpha, sigma, beta, lamd_a, VPN_output, new_ID, num
         ### Get predicted V_fam, C from last trial
         old_Vfam = history_V[stim_ID][-1]
         old_c = history_C[-1]
-        totfam_last = old_Vfam*old_c
         
         # Update VFam
         err_V = lamd_a - old_Vfam

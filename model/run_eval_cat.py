@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Jun 17 13:19:12 2020
+Created on Fri Aug  7 15:26:38 2020
 
-@author: hauke
+@author: de_hauk
 """
 
 ###### TODO
@@ -17,14 +17,14 @@ Created on Wed Jun 17 13:19:12 2020
 
 
 
-folder_path_data = r'J:\main_results'
+folder_path_data = r'C:\Users\de_hauk\PowerFolders\apps_tzakiris_rep\data\processed'
 
-### Disable depreciation warnings from sk-learn:: needs to be in the file that calls the functiond
+
 from skopt import gp_minimize, utils, space
 import pandas as pd
 import numpy as np
 import datetime
-#import yabox as yb
+
 
 # import warnings filter
 from warnings import simplefilter
@@ -41,12 +41,6 @@ data = pd.read_csv(folder_path_data + r'/final_proc_dat_labjansen.csv')
 from model_functions import VIEW_INDIPENDENTxCONTEXT,VIEW_DEPENDENT,VIEW_DEPENDENTxCONTEXT_DEPENDENT
 from model_functions import VIEW_INDEPENDENT, VIEW_INDEPENDENTxVIEW_DEPENDENT
 from model_functions import VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT
-
-#from tqdm import tqdm
-
-
-
-
 
 #### get unique IDS
 sample_answer_clms = [i for i in data.columns.values.tolist() if 'answer' in i]
@@ -85,16 +79,10 @@ example = alpha_cat.rvs(20)
 
 # Dimensions
 
-dimensions_win_cont = [alpha_skl, sigma_skl, beta_skl, lamda_skl]
 dimensions_win_cat = [alpha_cat, sigma_cat, beta_cat, lamda_cat]
 
 # Loss functions
 
-@utils.use_named_args(dimensions=dimensions_win_cont)
-def VIEW_INDIPENDENTxCONTEXT_optim_cont(alpha, sigma, beta, lamd_a):
-    result = VIEW_INDIPENDENTxCONTEXT(alpha, sigma, beta, lamd_a, VPN_output, new_ID, numb_prev_presentations, stim_IDs)
-    model_ev = result[0]
-    return -1*model_ev
 @utils.use_named_args(dimensions=dimensions_win_cat)
 def VIEW_INDIPENDENTxCONTEXT_optim_cat(alpha_cat, sigma_cat, beta_cat, lamda_cat):
     result = VIEW_INDIPENDENTxCONTEXT(alpha_cat, sigma_cat, beta_cat, lamda_cat, VPN_output, new_ID, numb_prev_presentations, stim_IDs, False)
@@ -107,16 +95,9 @@ def VIEW_INDIPENDENTxCONTEXT_optim_cat(alpha_cat, sigma_cat, beta_cat, lamda_cat
 
 # dimensions
 dim_view_dep_cat = [alpha_cat, beta_cat, lamda_cat]
-dim_view_dep_cont = [alpha_skl, beta_skl, lamda_skl]
+
 
 # Loss function
-
-''' Continuous Parameter Space'''
-@utils.use_named_args(dimensions=dim_view_dep_cont)
-def VIEW_DEPENDENT_optim_cont(alpha_cat, beta_cat, lamda_cat):  
-    result = VIEW_DEPENDENT(alpha_cat, beta_cat, lamda_cat, VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective)
-    model_ev = result[0]
-    return -1*model_ev
 
 '''Categorical Parameter Space'''
 #(alpha, beta, lamd_a, VPN_output, new_ID, stim_IDs, stim_IDs_perspective, verbose)
@@ -129,19 +110,11 @@ def VIEW_DEPENDENT_optim_cat(alpha_cat, beta_cat, lamda_cat):
 
 
 ##### VIEW_DEPENDENTxCONTEXT_DEPENDENT
-#(alpha, sigma, beta, lamd_a, VPN_output, new_ID, stim_IDs, stim_IDs_perspective, verbose)
 #dimensions
-dim_view_dep_context_cont = [alpha_skl, sigma_skl, beta_skl, lamda_skl] 
+
 dim_view_dep_context_cat = [alpha_cat, sigma_cat, beta_cat, lamda_cat] 
 
 # Loss functions
-
-''' Continuous Parameter Space'''
-@utils.use_named_args(dimensions=dim_view_dep_context_cont)
-def VIEW_DEPENDENTxCONTEXT_DEPENDENT_optim_cont(alpha, sigma, beta, lamd_a):
-    result = VIEW_DEPENDENTxCONTEXT_DEPENDENT(alpha, sigma, beta, lamd_a, VPN_output, new_ID, stim_IDs, stim_IDs_perspective)
-    model_ev = result[0]
-    return -1*model_ev
 
 '''Categorical Parameter Space'''
 @utils.use_named_args(dimensions=dim_view_dep_context_cat)
@@ -154,17 +127,9 @@ def VIEW_DEPENDENTxCONTEXT_DEPENDENT_optim_cat(alpha_cat, sigma_cat, beta_cat, l
 ##### VIEW_INDEPENDENT
 
 #dimensions
-dim_view_dep_cont = [alpha_skl, beta_skl, lamda_skl] 
 dim_view_dep_cat = [alpha_cat, beta_cat, lamda_cat] 
 
 # Loss functions
-
-''' Continuous Parameter Space'''
-@utils.use_named_args(dimensions=dim_view_dep_cont)
-def VIEW_INDEPENDENT_optim_cont(alpha, beta, lamd_a):
-    result = VIEW_INDEPENDENT(alpha, beta, lamd_a, VPN_output, new_ID, numb_prev_presentations, stim_IDs, False)
-    model_ev = result
-    return -1*model_ev
 
 '''Categorical Parameter Space'''
 #alpha, beta, lamd_a, VPN_output, new_ID, numb_prev_presentations, stim_IDs,verbose)
@@ -178,21 +143,12 @@ def VIEW_INDEPENDENT_optim_cat(alpha_cat, beta_cat, lamda_cat):
 ##### VIEW_INDEPENDENTxVIEW_DEPENDENT
 
 #dimensions
-dim_view_ind_view_dep_cont = [alpha_skl, alpha_skl, beta_skl, lamda_skl, lamda_skl] 
 dim_view_ind_view_dep_cat = [alpha_cat, alpha_cat_1, beta_cat, lamda_cat, lamda_cat_1] 
 
 
 # Loss functions
 
-''' Continuous Parameter Space'''
-@utils.use_named_args(dimensions=dim_view_ind_view_dep_cont)
-def VIEW_INDEPENDENTxVIEW_DEPENDENT_optim_cont(alpha, alpha_1, beta, lamd_a, lamd_a_1):
-    result = VIEW_INDEPENDENTxVIEW_DEPENDENT(alpha, alpha_1, beta, lamd_a, lamd_a_1, VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, False)
-    model_ev = result
-    return -1*model_ev
-
 '''Categorical Parameter Space'''
-#(alpha_ind, alpha_dep, beta, lamd_a_ind, lamd_a_dep, VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose)
 
 @utils.use_named_args(dimensions=dim_view_ind_view_dep_cat)
 def VIEW_INDEPENDENTxVIEW_DEPENDENT_optim_cat(alpha_cat, alpha_cat_1, beta_cat, lamda_cat, lamda_cat_1):
@@ -201,20 +157,11 @@ def VIEW_INDEPENDENTxVIEW_DEPENDENT_optim_cat(alpha_cat, alpha_cat_1, beta_cat, 
     return -1*model_ev
 
 ##### VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT
-#(alpha_ind, alpha_dep, sigma, beta, lamd_a_ind, lamd_a_dep, VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose)
+
 #dimensions
-#dim_view_ind_view_dep_context_cont = [alpha_skl, alpha_skl,sigma_skl beta_skl, lamda_skl, lamda_skl] 
 dim_view_ind_view_dep_context_cat = [alpha_cat, alpha_cat_1,sigma_cat, beta_cat, lamda_cat, lamda_cat_1] 
 
-
 # Loss functions
-
-# ''' Continuous Parameter Space'''
-# @utils.use_named_args(dimensions=dim_view_ind_view_dep_cont)
-# def VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT_optim_cont(alpha, alpha_1, beta, lamd_a, lamd_a_1):
-#     result = VIEW_INDEPENDENTxVIEW_DEPENDENT(alpha, alpha_1, beta, lamd_a, lamd_a_1, VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, False)
-#     model_ev = result
-#     return -1*model_ev
 
 '''Categorical Parameter Space'''
 #(alpha_ind, alpha_dep, sigma, beta, lamd_a_ind, lamd_a_dep, VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose)
@@ -226,24 +173,30 @@ def VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT_optim_cat(alpha_cat, alpha_cat_1,sig
 
 ###############################################################################################################
 #function optim
-res = []
-
-model_ev_VIEW_INDIPENDENTxCONTEXT_optim = 0
-model_ev_VIEW_DEPENDENT_optim = 0
-model_ev_VIEW_DEPENDENTxCONTEXT_DEPENDENT_optim = 0
-model_ev_VIEW_INDEPENDENT_optim = 0
-model_ev_VIEW_INDEPENDENTxVIEW_DEPENDENT = 0
-model_ev_VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT_optim = 0
-results_history_optim = []
+models_names = ['VIEW_INDIPENDENTxCONTEXT',
+                'VIEW_DEPENDENT',
+                'VIEW_DEPENDENTxCONTEXT_DEPENDENT',
+                'VIEW_INDEPENDENT',
+                'VIEW_INDEPENDENTxVIEW_DEPENDENT',
+                'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT']
+                
+results_history_optim = {'VIEW_INDIPENDENTxCONTEXT': [],
+                         'VIEW_DEPENDENT': [],
+                         'VIEW_DEPENDENTxCONTEXT_DEPENDENT': [],
+                         'VIEW_INDEPENDENT': [],
+                         'VIEW_INDEPENDENTxVIEW_DEPENDENT':[],
+                         'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT':[],
+                         'IDs':sample_answer_clms,
+                         'models':models_names}
 n_calls = 20
-n_rand_start = 10  
-n_jobs = 18
+n_rand_start = 15  
+n_jobs = 16
 noise = 1e-10
 skopt_verbose = False
 # Set Seed
 rnd_state = 1993
 
-for i,j in zip(sample_answer_clms[0:2],sample_perspective_clms[0:2]):
+for i,j in zip(sample_answer_clms,sample_perspective_clms):
     print(i)
     #func calls & rand starts
 
@@ -256,28 +209,30 @@ for i,j in zip(sample_answer_clms[0:2],sample_perspective_clms[0:2]):
     res_y0=[]
 
     ##### Model Optim
-    
+    print('M_1')
     res2a = gp_minimize(func=VIEW_INDIPENDENTxCONTEXT_optim_cat,
-                    dimensions=dimensions_win_cat,
-                    n_calls=n_calls,
-                    random_state = rnd_state,
-                    n_jobs=n_jobs,
-                    n_random_starts = n_rand_start,
-                    noise = noise, 
-                    verbose = skopt_verbose,
-                    acq_optimizer= 'sampling', 
-                    acq_func = 'gp_hedge')
+                dimensions=dimensions_win_cat,
+                n_calls=n_calls,
+                random_state = rnd_state,
+                n_jobs=n_jobs,
+                n_random_starts = n_rand_start,
+                noise = noise, 
+                verbose = skopt_verbose,
+                acq_optimizer= 'sampling', 
+                acq_func = 'gp_hedge')
+    print('M_2')
     
     res2b = gp_minimize(func=VIEW_DEPENDENT_optim_cat,
-                    dimensions=dim_view_dep_cat,
-                    n_calls=n_calls,
-                    random_state = rnd_state,
-                    n_jobs=n_jobs,
-                    n_random_starts = n_rand_start,
-                    noise = noise, 
-                    verbose = skopt_verbose,
-                    acq_optimizer= 'sampling', 
-                    acq_func = 'gp_hedge')
+                dimensions=dim_view_dep_cat,
+                n_calls=n_calls,
+                random_state = rnd_state,
+                n_jobs=n_jobs,
+                n_random_starts = n_rand_start,
+                noise = noise, 
+                verbose = skopt_verbose,
+                acq_optimizer= 'sampling', 
+                acq_func = 'gp_hedge')
+    print('M_3')
     
     res2c = gp_minimize(func=VIEW_DEPENDENTxCONTEXT_DEPENDENT_optim_cat,
                 dimensions=dim_view_dep_context_cat,
@@ -289,6 +244,7 @@ for i,j in zip(sample_answer_clms[0:2],sample_perspective_clms[0:2]):
                 verbose = skopt_verbose,
                 acq_optimizer= 'sampling', 
                 acq_func = 'gp_hedge')
+    print('M_4')
 
     res2d = gp_minimize(func=VIEW_INDEPENDENT_optim_cat,
                 dimensions=dim_view_dep_cat,
@@ -299,7 +255,9 @@ for i,j in zip(sample_answer_clms[0:2],sample_perspective_clms[0:2]):
                 noise = noise, 
                 verbose = skopt_verbose,
                 acq_optimizer= 'sampling', 
-                acq_func = 'gp_hedge')    
+                acq_func = 'gp_hedge')   
+    
+    print('M_5')
     res2e = gp_minimize(func=VIEW_INDEPENDENTxVIEW_DEPENDENT_optim_cat,
                 dimensions=dim_view_ind_view_dep_cat,
                 n_calls=n_calls,
@@ -309,7 +267,9 @@ for i,j in zip(sample_answer_clms[0:2],sample_perspective_clms[0:2]):
                 noise = noise, 
                 verbose = skopt_verbose,
                 acq_optimizer= 'sampling', 
-                acq_func = 'gp_hedge')        
+                acq_func = 'gp_hedge')
+    print('M_6')    
+    
     res2f = gp_minimize(func=VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT_optim_cat,
                 dimensions=dim_view_ind_view_dep_context_cat,
                 n_calls=n_calls,
@@ -319,82 +279,21 @@ for i,j in zip(sample_answer_clms[0:2],sample_perspective_clms[0:2]):
                 noise = noise, 
                 verbose = skopt_verbose,
                 acq_optimizer= 'sampling', 
-                acq_func = 'gp_hedge')        
+                acq_func = 'gp_hedge') 
        
-    
-    results_history_optim.append((i,('VIEW_INDIPENDENTxCONTEXT_optim_cat',res2a),
-                                  ('VIEW_DEPENDENT_optim_cat', res2b),
-                                  ('VIEW_DEPENDENTxCONTEXT_DEPENDENT_optim_cat', res2c),
-                                  ('VIEW_INDEPENDENT',res2d),
-                                  ('VIEW_INDEPENDENTxVIEW_DEPENDENT',res2e),
-                                  ('VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT',res2f)))
-                                  
+    res_data = [res2a,res2b,res2c,res2d,res2e,res2f]
+    for model,model_res in zip(models_names,res_data):
+        results_history_optim[model].append(model_res)
 
-    # results_history_optim.append((i,('Bayesopt',res1),('Bayesopt_cat',res2),('Different Evo',de)))
+res_person = {'model_ev': pd.DataFrame(index = [i for i in results_history_optim['models']]),
+              'params':{'models':results_history_optim['models']}}
+for person, person_n in zip(results_history_optim['IDs'],range(len(results_history_optim['IDs']))):
+    vpn_id = person
+    model_ev = []
+    params = []
+    for model in results_history_optim['models']:
+        model_ev.append(results_history_optim[model][person_n]['fun'])
+        params.append(results_history_optim[model][person_n]['x'])
+    res_person['model_ev'][vpn_id] = model_ev
+    res_person['params'][vpn_id] = params
 
-    '''
-    print('Model 2')
-    res2 = gp_minimize(func= VIEW_DEPENDENT_optim,dimensions=dimensions_wo_context, n_calls=n_calls,n_jobs=-1,n_random_starts = n_rand_start,noise =1e-10  )
-    print(res2['fun'], res2['x'])
-    model_ev_VIEW_DEPENDENT_optim += res2['fun']
-    
-    print('Model 3')
-    res3 = gp_minimize(func= VIEW_DEPENDENTxCONTEXT_DEPENDENT_optim,dimensions=dimensions, n_calls=n_calls,n_jobs=-1,n_random_starts = n_rand_start,noise =1e-10  )
-    print(res3['fun'], res3['x'])
-    model_ev_VIEW_DEPENDENTxCONTEXT_DEPENDENT_optim += res3['fun']
-    
-    print('Model 4')
-    res4 = gp_minimize(func= VIEW_INDEPENDENT_optim,dimensions=dimensions_wo_context, n_calls=n_calls,n_jobs=-1,n_random_starts = n_rand_start,noise =1e-10  )
-    print(res4['fun'], res4['x'])
-    model_ev_VIEW_INDEPENDENT_optim += res4['fun']
-    
-    print('Model 5')
-    res5 = gp_minimize(func= VIEW_INDEPENDENTxVIEW_DEPENDENT_optim,dimensions=dimensions_wo_context, n_calls=n_calls,n_jobs=-1,n_random_starts = n_rand_start,noise =1e-10  )
-    print(res5['fun'], res5['x'])
-    model_ev_VIEW_INDEPENDENTxVIEW_DEPENDENT += res5['fun']
-    
-    print('Model 6')
-    res6 = gp_minimize(func= VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT_optim,dimensions=dimensions, n_calls=n_calls,n_jobs=-1,n_random_starts = n_rand_start,noise =1e-10  )
-    print(res6['fun'], res6['x'])
-    model_ev_VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT_optim += res6['fun']
-    
-    results_history_optim.append((res1,res2,res3,res4,res5,res6))
-    '''
-'''
-#################################################### Visualize ################################################
-
-model_names = ['VIEW_INDIPENDENTxCONTEXT', 'VIEW_DEPENDENT', 'VIEW_DEPENDENTxCONTEXT_DEPENDENT', 'VIEW_INDEPENDENT', 'VIEW_INDEPENDENTxVIEW_DEPENDENT', 'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT']    
-vpn_viz = range(1,11)
-
-All_dat_raw = pd.DataFrame()
-All_dat_raw['models'] = pd.Series(model_names)
-## put into dataframes
-for i,j in zip(results_history_optim, range(len(results_history_optim))):
-    Model_ev_VPN = []
-    for model_ev in i:
-        Model_ev_VPN.append(model_ev['fun'])
-    All_dat_raw[str(j)] = pd.Series(Model_ev_VPN)
-    
-All_dat = All_dat_raw.set_index(keys = 'models')     
-
-All_dat.to_csv(folder_path_WD + '/prelim_res.csv')
- 
-######################################### Todo  ########################################
-
-#gradienten berechen -> autograd -> https://github.com/HIPS/autograd
-# minimize(method=’L-BFGS-B’) -> https://docs.scipy.org/doc/scipy/reference/optimize.minimize-lbfgsb.html
-
-### LBFGS Implement
-
-    from scipy.optimize import minimize
-    res = minimize(VIEW_INDIPENDENTxCONTEXT_optim_exp,
-                                  method = 'L-BFGS-B',
-                                  jac='2-point',
-                                  x0 = [0.5,0.5,10,1],
-                                  bounds = [(0.,1.),(0.,1.),(1.,20.),(0.,2.)],
-                                  options = {'disp':True}
-                                  )
-
-
-
-'''
