@@ -70,7 +70,7 @@ def VIEW_INDIPENDENTxCONTEXT(alpha, sigma, beta, lamd_a, VPN_output, new_ID, num
         history_V_ind.append((old_Vfam,new_Vfam))
         history_total.append(totfam)
         #get answer prob
-        p_yes = np.around((1/ (1+ np.exp((-1*beta)*totfam))), decimals=5)
+        p_yes = np.around((1/ (1+ np.exp((-1*beta)*totfam))), decimals=5)+ 0.000001
         p_no = np.around((1-p_yes), decimals=5) + 0.000001
 
         if action == 1:
@@ -142,7 +142,7 @@ def VIEW_DEPENDENT(alpha, beta, lamd_a, VPN_output, new_ID, stim_IDs, stim_IDs_p
         history_total.append(totfam)
     
         #get answer prob
-        p_yes = np.around((1/ (1+ np.exp((-1*beta)*totfam))), decimals=5)
+        p_yes = np.around((1/ (1+ np.exp((-1*beta)*totfam))), decimals=5)+ 0.000001
         p_no = np.around((1-p_yes), decimals=5) + 0.000001
 
         if action == 1:
@@ -222,7 +222,7 @@ def VIEW_DEPENDENTxCONTEXT_DEPENDENT(alpha, sigma, beta, lamd_a, VPN_output, new
         history_total.append(totfam)
 
         #get answer prob
-        p_yes = np.around((1/ (1+ np.exp((-1*beta)*totfam))), decimals=5)
+        p_yes = np.around((1/ (1+ np.exp((-1*beta)*totfam))), decimals=5)+ 0.000001
         p_no = np.around((1-p_yes), decimals=5) + 0.000001 # implemented constant as to avoid np.log(0)
         #print(p_yes,p_no)
         if action == 1:
@@ -279,7 +279,7 @@ def VIEW_INDEPENDENT(alpha, beta, lamd_a, VPN_output, new_ID, numb_prev_presenta
         history_V[stim_ID] = newfamlist
     
         #get answer prob
-        p_yes = np.around((1/ (1+ np.exp((-1*beta)*totfam))), decimals=5)
+        p_yes = np.around((1/ (1+ np.exp((-1*beta)*totfam))), decimals=5)+ 0.000001
         p_no = np.around((1-p_yes), decimals=5) + 0.000001
 
         if action == 1:
@@ -359,7 +359,7 @@ def VIEW_INDEPENDENTxVIEW_DEPENDENT(alpha_ind, alpha_dep, beta, lamd_a_ind, lamd
         history_total.append(totfam)
     
         #get answer prob
-        p_yes = np.around((1/ (1+ np.exp((-1*beta)*totfam))), decimals=5)
+        p_yes = np.around((1/ (1+ np.exp((-1*beta)*totfam))), decimals=5)+ 0.000001
         p_no = np.around((1-p_yes), decimals=5) + 0.000001
 
         if action == 1:
@@ -449,7 +449,7 @@ def VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT(alpha_ind, alpha_dep, sigma, beta, l
         history_total.append(totfam)
     
         #get answer prob
-        p_yes = np.around((1/ (1+ np.exp((-1*beta)*totfam))), decimals=5)
+        p_yes = np.around((1/ (1+ np.exp((-1*beta)*totfam))), decimals=5)+ 0.000001
         p_no = np.around((1-p_yes), decimals=5) + 0.000001 # implemented constant as to avoid np.log(0)
 
         if action == 1:

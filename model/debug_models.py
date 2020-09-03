@@ -7,8 +7,8 @@ Created on Wed Jun 24 10:48:29 2020
 
 
 
-from model_functions import VIEW_INDIPENDENTxCONTEXT,VIEW_DEPENDENT,VIEW_DEPENDENTxCONTEXT_DEPENDENT,VIEW_INDEPENDENT,VIEW_INDEPENDENTxVIEW_DEPENDENT,VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT
-folder_path_data = r'J:\main_results'
+from model_functions_BFGS import VIEW_INDIPENDENTxCONTEXT,VIEW_DEPENDENT,VIEW_DEPENDENTxCONTEXT_DEPENDENT,VIEW_INDEPENDENT,VIEW_INDEPENDENTxVIEW_DEPENDENT,VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT
+folder_path_data = r'C:\Users\de_hauk\PowerFolders\apps_tzakiris_rep\data\processed'
 
 ### Disable depreciation warnings from sk-learn:: needs to be in the file that calls the functiond
 from skopt import gp_minimize, utils, space
@@ -65,23 +65,27 @@ params_m_4 = [.38,1.19,.74]
 params_m_5 = [.83,.13,.8,1.82,1.02]
 params_m_6 = [.55,.02,.33,.5,1.07,1.49]
 
-m_1 = VIEW_INDIPENDENTxCONTEXT(params_m_1[0],
+verbose = True
+
+m_1 = VIEW_INDIPENDENTxCONTEXT([VPN_output, new_ID, numb_prev_presentations, stim_IDs, verbose],
+                               [params_m_1[0],
                                params_m_1[1],
                                params_m_1[2],
-                               params_m_1[3], VPN_output, new_ID, numb_prev_presentations, stim_IDs, True)
+                               params_m_1[3]] )
 
-m_2 = VIEW_DEPENDENT(params_m_3[0],
-                     params_m_3[1],
-                     params_m_3[2], VPN_output, new_ID, stim_IDs, stim_IDs_perspective, True)
+m_2 = VIEW_DEPENDENT([VPN_output, new_ID, stim_IDs, stim_IDs_perspective, verbose],
+                     [params_m_3[0], params_m_3[1], params_m_3[2]])
 
-m_3 = VIEW_DEPENDENTxCONTEXT_DEPENDENT(params_m_2[0],
+m_3 = VIEW_DEPENDENTxCONTEXT_DEPENDENT([VPN_output, new_ID, stim_IDs, stim_IDs_perspective, True],
+                                       [params_m_2[0],
                                        params_m_2[1],
                                        params_m_2[2],
-                                       params_m_2[3], VPN_output, new_ID, stim_IDs, stim_IDs_perspective, True)
+                                       params_m_2[3]] )
 
-m_4 = VIEW_INDEPENDENT(params_m_4[0],
+m_4 = VIEW_INDEPENDENT([VPN_output, new_ID, numb_prev_presentations, stim_IDs,True],
+                       [params_m_4[0],
                        params_m_4[1],
-                       params_m_4[2], VPN_output, new_ID, numb_prev_presentations, stim_IDs,True)
+                       params_m_4[2]])
 
 m_5 = VIEW_INDEPENDENTxVIEW_DEPENDENT(params_m_5[0], 
                                       params_m_5[1], 

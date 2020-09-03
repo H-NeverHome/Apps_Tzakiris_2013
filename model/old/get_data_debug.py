@@ -31,5 +31,5 @@ with open(r'C:\Users\de_hauk\PowerFolders\apps_tzakiris_rep\meeting_13_08\res_fi
 # #model_ev['m_ev_sum'] = model_ev.sum(axis=1)
 
 # sns.barplot(data=model_ev.T, palette="Blues")
-# # with open('filename.pickle', 'rb') as handle:
-# #     b = pickle.load(handle
+# with open(r'C:\Users\de_hauk\PowerFolders\apps_tzakiris_rep\meeting_13_08\res_fit_old1.pickle', 'rb') as handle:
+#     b = pickle.load(handle)
