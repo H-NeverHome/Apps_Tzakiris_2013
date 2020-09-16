@@ -39,7 +39,7 @@ vpn_perspective = sample_perspective_clms[0]
 
 stim_IDs = data['stim_IDs'] #stimulus IDs of winning model 
 new_ID = data['new_IDs'] #trials where new ID is introduced 
-numb_prev_presentations = data.iloc[:,3] #number_of_prev_presentations
+numb_prev_presentations = data['number_of_prev_presentations_raw '] #number_of_prev_presentations
 stim_IDs_perspective = data[vpn_perspective] #view dependent
 VPN_output = data[vpn_answer] #VPN answers
 
@@ -87,16 +87,18 @@ m_4 = VIEW_INDEPENDENT([VPN_output, new_ID, numb_prev_presentations, stim_IDs,Tr
                        params_m_4[1],
                        params_m_4[2]])
 
-m_5 = VIEW_INDEPENDENTxVIEW_DEPENDENT(params_m_5[0], 
+m_5 = VIEW_INDEPENDENTxVIEW_DEPENDENT([VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, True],
+                                      [params_m_5[0], 
                                       params_m_5[1], 
                                       params_m_5[2],
                                       params_m_5[3],
-                                      params_m_5[4],
-                                      VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, True)
+                                      params_m_5[4]])
 
-m_6 = VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT(params_m_6[0],
+m_6 = VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT([VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, True],[params_m_6[0],
                                               params_m_6[1],
                                               params_m_6[2],
                                               params_m_6[3],
                                               params_m_6[4],
-                                              params_m_6[5], VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, True)
+                                              params_m_6[5]])
+
+res_debug = [m_1,m_2,m_3,m_4,m_5,m_6]

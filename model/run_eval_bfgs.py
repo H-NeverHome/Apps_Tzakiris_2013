@@ -19,7 +19,7 @@ import numpy as np
 import datetime
 from functools import partial
 import scipy
-
+from scipy import optimize
 np.random.seed(1993)
 ### Get data 
 data = pd.read_csv(folder_path_data + r'/final_proc_dat_labjansen.csv')
@@ -28,7 +28,8 @@ data = pd.read_csv(folder_path_data + r'/final_proc_dat_labjansen.csv')
 sample_answer_clms = [i for i in data.columns.values.tolist() if 'answer' in i]
 sample_perspective_clms = [i for i in data.columns.values.tolist() if 'perspective' in i]
 
-
+epsilon_param = 0.01
+x_0_bfgs = 0.7
 
 
 
@@ -59,7 +60,7 @@ for i,j in zip(sample_answer_clms,sample_perspective_clms):
     # data import
     stim_IDs = data['stim_IDs'] #stimulus IDs of winning model 
     new_ID = data['new_IDs'] #trials where new ID is introduced 
-    numb_prev_presentations = data.iloc[:,3] #number_of_prev_presentations
+    numb_prev_presentations = data['number_of_prev_presentations_raw '] #number_of_prev_presentations
     stim_IDs_perspective = data[str(j)] #view dependent
     VPN_output = data[str(i)] #VPN answers
     verbose = False
@@ -74,11 +75,11 @@ for i,j in zip(sample_answer_clms,sample_perspective_clms):
     bounds_M1 = [(0,1),(0,1),(.1,20),(0,2)]
     
     part_func_M1 = partial(VIEW_INDIPENDENTxCONTEXT,data_M1) 
-    res1 = scipy.optimize.fmin_l_bfgs_b(part_func_M1,
+    res1 = optimize.fmin_l_bfgs_b(part_func_M1,
                                   approx_grad = True,
                                   bounds = bounds_M1, 
-                                  x0 = [np.random.uniform(low=0.01, high=.99, size=1) for i in range(len(bounds_M1))],
-                                  epsilon=.1)
+                                  x0 = [x_0_bfgs for i in range(len(bounds_M1))],
+                                  epsilon=epsilon_param)
     
     
     
@@ -92,11 +93,11 @@ for i,j in zip(sample_answer_clms,sample_perspective_clms):
     bounds_M2 = [(0,1),(.1,20),(0,2)]
     
     part_func_M2 = partial(VIEW_DEPENDENT,data_M2) 
-    res2 = scipy.optimize.fmin_l_bfgs_b(part_func_M2,
+    res2 = optimize.fmin_l_bfgs_b(part_func_M2,
                                   approx_grad = True,
                                   bounds = bounds_M2, 
-                                  x0 = [np.random.uniform(low=0.01, high=.99, size=1) for i in range(len(bounds_M2))],
-                                  epsilon=.1)
+                                  x0 = [x_0_bfgs for i in range(len(bounds_M2))],
+                                  epsilon=epsilon_param)
     
     
     print('VIEW_DEPENDENTxCONTEXT_DEPENDENT')
@@ -107,11 +108,11 @@ for i,j in zip(sample_answer_clms,sample_perspective_clms):
     bounds_M3 = [(0,1),(0,1),(.1,20),(0,2)]
 
     part_func_M3 = partial(VIEW_DEPENDENTxCONTEXT_DEPENDENT,data_M3) 
-    res3 = scipy.optimize.fmin_l_bfgs_b(part_func_M3,
+    res3 = optimize.fmin_l_bfgs_b(part_func_M3,
                                   approx_grad = True,
                                   bounds = bounds_M3, 
-                                  x0 = [np.random.uniform(low=0.01, high=.99, size=1) for i in range(len(bounds_M3))],
-                                  epsilon=.1)
+                                  x0 = [x_0_bfgs for i in range(len(bounds_M3))],
+                                  epsilon=epsilon_param)
     
     print('VIEW_INDEPENDENT')
     #params = [alpha, beta, lamd_a]
@@ -121,11 +122,11 @@ for i,j in zip(sample_answer_clms,sample_perspective_clms):
     bounds_M4 = [(0,1),(.1,20),(0,2)]
 
     part_func_M4 = partial(VIEW_INDEPENDENT,data_M4) 
-    res4 = scipy.optimize.fmin_l_bfgs_b(part_func_M4,
+    res4 = optimize.fmin_l_bfgs_b(part_func_M4,
                                   approx_grad = True,
                                   bounds = bounds_M4, 
-                                  x0 = [np.random.uniform(low=0.01, high=.99, size=1) for i in range(len(bounds_M4))],
-                                  epsilon=.1)
+                                  x0 = [x_0_bfgs for i in range(len(bounds_M4))],
+                                  epsilon=epsilon_param)
     
     
     print('VIEW_INDEPENDENTxVIEW_DEPENDENT')
@@ -137,11 +138,11 @@ for i,j in zip(sample_answer_clms,sample_perspective_clms):
     bounds_M5 = [(0,1),(0,1),(.1,20),(0,2),(0,2)]
 
     part_func_M5 = partial(VIEW_INDEPENDENTxVIEW_DEPENDENT,data_M5) 
-    res5 = scipy.optimize.fmin_l_bfgs_b(part_func_M5,
+    res5 = optimize.fmin_l_bfgs_b(part_func_M5,
                                   approx_grad = True,
                                   bounds = bounds_M5, 
-                                  x0 = [np.random.uniform(low=0.01, high=.99, size=1) for i in range(len(bounds_M5))],
-                                  epsilon=.1)
+                                  x0 = [x_0_bfgs for i in range(len(bounds_M5))],
+                                  epsilon=epsilon_param)
     
     print('VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT')
     #params = [alpha_ind, alpha_dep, sigma, beta, lamd_a_ind, lamd_a_dep]
@@ -151,11 +152,11 @@ for i,j in zip(sample_answer_clms,sample_perspective_clms):
     bounds_M6 = [(0,1),(0,1),(0,1),(.1,20),(0,2),(0,2)]
 
     part_func_M6 = partial(VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT,data_M6) 
-    res6 = scipy.optimize.fmin_l_bfgs_b(part_func_M6,
+    res6 = optimize.fmin_l_bfgs_b(part_func_M6,
                                   approx_grad = True,
                                   bounds = bounds_M6, 
-                                  x0 = [np.random.uniform(low=0.01, high=.99, size=1) for i in range(len(bounds_M6))],
-                                  epsilon=.1)
+                                  x0 = [x_0_bfgs for i in range(len(bounds_M6))],
+                                  epsilon=epsilon_param)
 
     res_evidence[i] = [i[1] for i in [res1,res2,res3,res4,res5,res6]]
     
