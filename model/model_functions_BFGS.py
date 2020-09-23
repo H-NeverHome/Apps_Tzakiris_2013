@@ -6,6 +6,7 @@ Created on Wed Jun 17 13:22:16 2020
 """
 
 import numpy as np
+import pandas as pd
 ################################### Calc False-Positive Rate as initialization val #################################
 
 def FP_rate_func(N_presentations, curr_list, trials):
@@ -39,7 +40,7 @@ def VIEW_INDIPENDENTxCONTEXT(data,params):
     
     # get false positive answer rate
     #FP_rate = FP_rate_func(numb_prev_presentations, VPN_output, 189)
-    trials_FP = 189
+    trials_FP = len(VPN_output)
     FP_rate_raw = 0
     for i,j in zip(numb_prev_presentations, VPN_output):
         if i==1 and j==1: # check if incorrectly assumed known at first presentation
@@ -50,11 +51,13 @@ def VIEW_INDIPENDENTxCONTEXT(data,params):
     ### dict for Trackkeeping of history
     history_V = dict.fromkeys([i for i in range(1,25)], [FP_rate]) #set initial value of view_ind_fam as FP rate A&T pg.8 R
     history_C = [0]
+    history_C_pe = []
     history_V_ind = []
     history_total = []
     history_answer = []
     model_evidence = 0
-    
+    vfam_PE_list = []
+
     ### inner loop through trials
     for stim_ID,action,num_pres,trial in zip(stim_IDs,VPN_output,numb_prev_presentations,range(len(stim_IDs))):
         
@@ -63,23 +66,22 @@ def VIEW_INDIPENDENTxCONTEXT(data,params):
         old_c = history_C[-1]
         
         # Update VFam
-
-        new_Vfam = old_Vfam + (alpha*(lamd_a - old_Vfam))
+        vfam_PE = (lamd_a - old_Vfam)
+        new_Vfam = old_Vfam + (alpha*vfam_PE)
+        vfam_PE_list.append(vfam_PE)
         newfamlist = history_V[stim_ID].copy() + [new_Vfam]
         history_V[stim_ID] = newfamlist
-        
+        history_V_ind.append(new_Vfam)
         # Update C Fam   
-        new_c = old_c - (sigma * (old_c - old_Vfam))
+        context_PE = (old_c - old_Vfam)
+        new_c = old_c - (sigma * context_PE)
+        history_C_pe.append(context_PE)
         history_C.append(new_c)
         
         ### get totfam
         totfam = new_c*new_Vfam    
         history_total.append(totfam)       
-        
-        ### debugging
-        
-        history_V_ind.append((old_Vfam,new_Vfam))
-        history_total.append(totfam)
+
         #get answer prob
         p_yes = np.around((1/ (1+ np.exp((-1*beta)*totfam))), decimals=5)+ 0.000001
         p_no = np.around((1-p_yes), decimals=5) + 0.000001
@@ -90,16 +92,24 @@ def VIEW_INDIPENDENTxCONTEXT(data,params):
         if action == 0:
             history_answer.append(p_no)
             #model_evidence += np.log(p_no)
-    model_evidence = np.log(history_answer).sum()
+    model_evidence = np.log(history_answer.copy()).sum()
     if verbose == False:
         return -1*model_evidence
     elif verbose == True:
+        data_store_1 = pd.DataFrame()
+        data_store_1['history_V'] = history_V_ind
+        data_store_1['history_C'] = history_C[1::]
+        data_store_1['history_total'] = history_total
+        data_store_1['vfam_PE'] = vfam_PE_list
+        data_store_1['context_PE'] = history_C_pe
+        data_store_1['vpn_answer'] = VPN_output
+        
+        
         data_store = {'history_answer': history_answer,
-              'history_V': history_V,
-              'history_total':history_total,
-              'history_C': history_C,
-              'params':[alpha, sigma, beta, lamd_a],
-              'log_like': model_evidence}
+                      'params':[alpha, sigma, beta, lamd_a],
+                      'log_like': model_evidence,
+                      'data_store_1':data_store_1,
+                      'history_total':history_total}
         return (model_evidence,data_store)
    
 
@@ -126,7 +136,7 @@ def VIEW_DEPENDENT(data, params):
         numb_presentations.append(new_numb_presentations[i])
     
     # get view-dependent false positive answer rate
-    trials_FP = 189
+    trials_FP = len(VPN_output)
     FP_rate_raw = 0
     for n_pres,answ in zip(numb_presentations, VPN_output):
         if n_pres==1 and answ==1: # check if incorrectly assumed known at first presentation
@@ -201,7 +211,7 @@ def VIEW_DEPENDENTxCONTEXT_DEPENDENT(data, params):
     
 
     # get false positive answer rate
-    trials_FP = len(all_stim)
+    trials_FP = len(VPN_output)
     FP_rate_raw = 0
     for n_pres,answ_vpn in zip(numb_presentations, VPN_output):
         if n_pres==1 and answ_vpn==1: # check if incorrectly assumed known at first presentation
@@ -269,7 +279,7 @@ def VIEW_INDEPENDENT(data, params):
     VPN_output, new_ID, numb_prev_presentations, stim_IDs, verbose = data[0],data[1],data[2],data[3],data[4]
     alpha, beta, lamd_a = params[0], params[1], params[2],
     # get false positive answer rate
-    trials_FP = 189
+    trials_FP = len(VPN_output)
     FP_rate_raw = 0
     for i,j in zip(numb_prev_presentations, VPN_output):
         if i==1 and j==1: # check if incorrectly assumed known at first presentation
@@ -340,7 +350,7 @@ def VIEW_INDEPENDENTxVIEW_DEPENDENT(data, params):
         numb_presentations.append(new_numb_presentations[i])
         
     #DEPENDENT get false positive answer rate
-    trials_FP = 189
+    trials_FP = len(VPN_output)
     FP_rate_raw_dep = 0
     for i,j in zip(numb_presentations, VPN_output):
         if i==1 and j==1: # check if incorrectly assumed known at first presentation
@@ -427,7 +437,7 @@ def VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT(data, params):
         numb_pres_dep.append(new_numb_presentations[i])
   
     #DEPENDENT get false positive answer rate
-    trials_FP = 189
+    trials_FP = len(VPN_output)
     FP_rate_raw_dep = 0
     for i,j in zip(numb_pres_dep, VPN_output):
         if i==1 and j==1: # check if incorrectly assumed known at first presentation
@@ -450,6 +460,7 @@ def VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT(data, params):
     history_total = []
     history_answer = []
     model_evidence = 0
+    
     
    
     ### inner loop through trials

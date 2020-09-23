@@ -16,10 +16,10 @@ folder_path_data = r'C:\Users\de_hauk\PowerFolders\apps_tzakiris_rep\data\proces
 
 import pandas as pd
 import numpy as np
-import datetime
 from functools import partial
 import scipy
 from scipy import optimize
+from scipy import special
 np.random.seed(1993)
 ### Get data 
 data = pd.read_csv(folder_path_data + r'/final_proc_dat_labjansen.csv')
@@ -41,15 +41,7 @@ models_names = ['VIEW_INDIPENDENTxCONTEXT',
                 'VIEW_INDEPENDENTxVIEW_DEPENDENT',
                 'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT']
                 
-results_history_optim = {'VIEW_INDIPENDENTxCONTEXT': [],
-                         'VIEW_DEPENDENT': [],
-                         'VIEW_DEPENDENTxCONTEXT_DEPENDENT': [],
-                         'VIEW_INDEPENDENT': [],
-                         'VIEW_INDEPENDENTxVIEW_DEPENDENT':[],
-                         'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT':[],
-                         'IDs':sample_answer_clms,
-                         'models':models_names}
-
+data_verbose_debug = {}
 res_evidence = pd.DataFrame(index=models_names)
 
 
@@ -157,7 +149,51 @@ for i,j in zip(sample_answer_clms,sample_perspective_clms):
                                   bounds = bounds_M6, 
                                   x0 = [x_0_bfgs for i in range(len(bounds_M6))],
                                   epsilon=epsilon_param)
-
-    res_evidence[i] = [i[1] for i in [res1,res2,res3,res4,res5,res6]]
     
+    
+    res_evidence[i] = [i[1] for i in [res1,res2,res3,res4,res5,res6]]
+    ############################## Verbose == True ###########################
+    
+    verbose_debug = True
+    if verbose_debug == True:
+        #data_M1_debug = data_M1
+        data_M_debug = [data_M1, data_M2, data_M3, data_M4, data_M5, data_M6]
+        for dat in data_M_debug:
+            dat[-1] = True
+    
+        
+        
+        data_M1_debug = data_M_debug[0]
+        params_m_1 = res1[0]
+        m_1 = VIEW_INDIPENDENTxCONTEXT(data_M1_debug, params_m_1)
+        
+        data_M2_debug = data_M_debug[1]
+        params_m_2 = res2[0]
+        m_2 = VIEW_DEPENDENT(data_M2_debug, params_m_2)
+    
+        data_M3_debug = data_M_debug[2]
+        params_m_3 = res3[0]
+        m_3 = VIEW_DEPENDENTxCONTEXT_DEPENDENT(data_M3_debug, params_m_3)
+        
+        data_M4_debug = data_M_debug[3]
+        params_m_4 = res4[0]
+        m_4 = VIEW_INDEPENDENT(data_M4_debug, params_m_4)
+    
+        data_M5_debug = data_M_debug[4]
+        params_m_5 = res5[0]
+        m_5 = VIEW_INDEPENDENTxVIEW_DEPENDENT(data_M5_debug, params_m_5)
+        
+        data_M6_debug = data_M_debug[5]
+        params_m_6 = res6[0]
+        m_6 = VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT(data_M6_debug, params_m_6)
+
+        res_debug = {models_names[0]: m_1,
+                     models_names[1]: m_2,
+                     models_names[2]: m_3,
+                     models_names[3]: m_4,
+                     models_names[4]: m_5,
+                     models_names[5]: m_6}
+        data_verbose_debug[i] = res_debug
 restotal = res_evidence.sum(axis=1)
+cntrl_log = special.logsumexp(-1*np.array(restotal[1::]))
+bf_log = (-1*np.array(restotal[0])) - cntrl_log
