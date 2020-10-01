@@ -55,9 +55,9 @@ def get_data_2(path_raw_data, ground_truth_file):
                 answer_raw.append(np.nan)
                 
     
-        DATA_raw_DF[unique_ID + 'perspective'] = perspective
-        DATA_raw_DF[unique_ID + 'perf'] = answer_correct
-        DATA_raw_DF[unique_ID + 'answer'] = answer_raw
+        DATA_raw_DF[unique_ID + '_perspective'] = perspective
+        DATA_raw_DF[unique_ID + '_perf'] = answer_correct
+        DATA_raw_DF[unique_ID + '_answer'] = answer_raw
     #raw_dat_unproc = [pd.read_csv(i,header=None, sep='\t').drop(axis='index', labels = [0,1])[2] for i in all_files]
     
     ### determine place and amount of missing value
@@ -218,8 +218,7 @@ def fit_data_noCV(data, lbfgs_epsilon, verbose_tot):
     import pandas as pd
     import numpy as np
     from functools import partial
-    from scipy import optimize
-    from scipy import special
+    from scipy import optimize,special
     np.random.seed(1993)
     ### Get data 
     data = data
@@ -255,6 +254,7 @@ def fit_data_noCV(data, lbfgs_epsilon, verbose_tot):
     data_verbose_debug = {}
     res_evidence = pd.DataFrame(index=models_names)
     trialwise_data = {}
+    bf_log_group = pd.DataFrame()
     
     for i,j in zip(sample_answer_clms,sample_perspective_clms):
         print(i)
@@ -368,7 +368,13 @@ def fit_data_noCV(data, lbfgs_epsilon, verbose_tot):
         
         parameter_est['VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT'][i] = res6[0]
         
-        res_evidence[i] = [i[1] for i in [res1,res2,res3,res4,res5,res6]]
+        re_evidence_subj = np.array([(-1*i[1]) for i in [res1,res2,res3,res4,res5,res6]])
+        res_evidence[i] = re_evidence_subj
+        
+        ### Subject BF_LOG
+        bf_log_subj = re_evidence_subj[0]-special.logsumexp(np.array(re_evidence_subj[1::]))
+        bf_log_group[i + '_BF_log'] = [bf_log_subj]
+        
         
         trialwise_dat = {}
         ############################## Verbose == True ###########################
@@ -421,13 +427,14 @@ def fit_data_noCV(data, lbfgs_epsilon, verbose_tot):
         #m_1[1]['data_store_1']
         trialwise_data[i] = wise_dat = m_1[1]['data_store_1']
     restotal = res_evidence.sum(axis=1)
-    cntrl_log = special.logsumexp(-1*np.array(restotal[1::]))
-    bf_log = (-1*np.array(restotal[0])) - cntrl_log
+    cntrl_log = special.logsumexp(np.array(restotal[1::]))
+    bf_log = (np.array(restotal[0])) - cntrl_log
     if verbose_tot==True:
         return (restotal,data_verbose_debug)
     elif verbose_tot==False:
         return {'bf_log':bf_log,
                 'subj_evidence':res_evidence,
+                'subj_BF_log': bf_log_group,
                 'total_evidence':restotal,
                 'used_data': data,
                 'parameters':parameter_est,
