@@ -8,7 +8,7 @@ Created on Wed Sep 16 09:45:32 2020
 
 def get_data(path):
     import pandas as pd
-    ### Get data 
+    ### Get preprocessed and previously stored data 
     data = pd.read_csv(path + r'/final_proc_dat_labjansen.csv')
 
     #### get unique IDS
@@ -21,6 +21,8 @@ def get_data(path):
 
 
 def get_data_2(path_raw_data, ground_truth_file):
+    ### Process raw data under path, nothin prestored
+    
     import pandas as pd
     import glob
     import numpy as np
@@ -82,7 +84,9 @@ def get_data_2(path_raw_data, ground_truth_file):
     for i in DATA_raw_DF:
         if i not in [i for i in DATA_imput]:
             DATA_imput[i] = DATA_raw_DF[i]
-    return DATA_imput
+    return {'imputed_data':DATA_imput,
+            'raw_data': DATA_raw_DF,
+            'stat_ground-truth':SAMPLE_fullinfo}
 
 def data_old_sample(path):
     import pandas as pd
@@ -376,7 +380,7 @@ def fit_data_noCV(data, lbfgs_epsilon, verbose_tot):
         bf_log_group[i + '_BF_log'] = [bf_log_subj]
         
         
-        trialwise_dat = {}
+        # trialwise_dat = {}
         ############################## Verbose == True ###########################
         
         verbose_debug = verbose_tot
@@ -423,20 +427,100 @@ def fit_data_noCV(data, lbfgs_epsilon, verbose_tot):
         data_M1_debug = data_M_debug[0]
         params_m_1 = res1[0]
         m_1 = VIEW_INDIPENDENTxCONTEXT(data_M1_debug, params_m_1)        
-        
-        #m_1[1]['data_store_1']
-        trialwise_data[i] = wise_dat = m_1[1]['data_store_1']
+
+        trialwise_data[i] = m_1[1]['data_store_1']
     restotal = res_evidence.sum(axis=1)
     cntrl_log = special.logsumexp(np.array(restotal[1::]))
-    bf_log = (np.array(restotal[0])) - cntrl_log
+    bf_log = (cntrl_log -(np.array(restotal[0])))
     if verbose_tot==True:
         return (restotal,data_verbose_debug)
     elif verbose_tot==False:
-        return {'bf_log':bf_log,
-                'subj_evidence':res_evidence,
-                'subj_BF_log': bf_log_group,
-                'total_evidence':restotal,
+        return {'uncorr_LR_10':np.exp(-1*bf_log),
+                'subject_level_model_evidence':res_evidence,
+                'group_level_model_evidence':res_evidence.sum(axis=1),
+                'subject_level_uncorr_LR': bf_log_group,
+                #'total_model-evidence':restotal,
                 'used_data': data,
-                'parameters':parameter_est,
-                'trialwise_dat':trialwise_data}
+                'subject_level_parameter-estimates':parameter_est,
+                'subject_level_trialwise_data_win_model':trialwise_data}
                 
+def get_behavioral_performance(unimputed_subject_data):
+    import pandas as pd
+    data = unimputed_subject_data
+    ########## Behavioral Performance
+
+    vpn_ids = [i.split('_a')[0] for i in data['raw_data'] if 'answer' in i]
+    vpn_answer = [i for i in data['raw_data'] if 'answer' in i]
+    vpn_perf = [i.split('_a')[0] for i in data['raw_data'] if '_perf' in i]
+    behavioral_perf = pd.DataFrame(index = vpn_ids)
+    
+    ##### Get %-correct
+    perf_dat = [(data['raw_data'][i].copy().sum()/ len(data['raw_data'][i]))*100 for i in vpn_perf]
+    behavioral_perf['%-correct'] = perf_dat
+    
+    ##### Get n_errors
+    behavioral_perf['n_errors'] = [len(data['raw_data'][i])-data['raw_data'][i].sum() for i in vpn_perf]
+    
+    ##### Get Missed
+    
+    behavioral_perf['missed_answers'] = [data['raw_data'][i].isna().sum() for i in data['raw_data'] if 'answer' in i]
+    
+    final_dict = {'behavioral_results': behavioral_perf,
+                  'used_data':data}
+    return final_dict
+
+
+   
+def model_selection_AT():
+    import pandas as pd
+    import numpy as np
+    from scipy import special
+    ########## Data Transcribed from paper
+    
+    ##### Model_selection
+    # Formulas from: 
+    #   Glover, S., Dixon, P. 
+    #   Likelihood ratios: A simple and flexible statistic for empirical psychologists. 
+    #   Psychonomic Bulletin & Review 11, 791–806 (2004). 
+    #   https://doi.org/10.3758/BF03196706
+    
+    ll_raw = {'View-dependent': [-1590,3],
+              'View-dependent_context-dependent': [-1510,4],
+              'View-INdependent': [-1480,3],
+              'View-independent_context-dependent': [-1425,4],
+              'View-independent_View-dependent': [-1475,5],
+              'View-independent_View-dependent_context-dependent': [-1430,6],
+              }
+    ll_dat = pd.DataFrame.from_dict(data=ll_raw)
+    ll_dat['indx']=['ll','n_param']
+    ll_dat.set_index(keys='indx',inplace=True)
+    
+    model_win = 'View-independent_context-dependent'
+    model_cntrl = [i for i in ll_dat if i != model_win]
+    
+    
+    ll_fin = pd.DataFrame(index = ['LR','LR_corr'])
+    n_size = 16
+    
+    
+    for i in model_cntrl:
+        # Get Log-Likelihoods
+        cntrl_ll = ll_dat[i][0]
+        win_ll = ll_dat[model_win][0]
+        
+        # Get n_params
+        win_nparam = ll_dat[model_win][1]
+        cntrl_nparam = ll_dat[i][1]
+        
+        # uncorr LR
+        lr_var = -2*(cntrl_ll-win_ll)
+        # corr LL -> Glover & Dixon, 2004
+        lr_corr = lr_var*((np.exp((cntrl_nparam-win_nparam)))**(np.log(n_size)/2))
+        
+        # POSITIVE VALUES FAVOR WINNING MODEL
+        ll_fin[i] = [lr_var]+[lr_corr]
+    
+    # Compare Multiple Models, lambda_mult     
+    lmbda_mult = -2*(special.logsumexp(np.array(ll_dat.T['ll'])-ll_dat[model_win][0]))
+    return {'AT_model_selection_results_nparams': ll_raw,
+            'lambda_mult_model_selection':lmbda_mult }   
