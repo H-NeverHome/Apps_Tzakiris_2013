@@ -59,7 +59,7 @@ def find_trial_list_189(generated_data, extr_data, iterations):
     
     import numpy as np
     import pandas as pd
-   
+    from tqdm import tqdm
     ''' Input into function'''
 
     roll_avg_window = 6
@@ -73,9 +73,9 @@ def find_trial_list_189(generated_data, extr_data, iterations):
 
     results_best = [] 
     
-    for it in range(iterations):
-        if it % 1000 == 0: #progress
-            print(it)
+    for it in tqdm(range(iterations)):
+        #if it % 1000 == 0: #progress
+            #print(it)
     
         '''dict for trackkeeping @ each iteration '''
         curr_pres_num_dict = dict.fromkeys(np.arange(1,numb_stim+1,1,dtype=int),0 ) # current pres @ trial t
