@@ -44,8 +44,78 @@ for ids in unq_ids:
     elif 'B' in ids:
         data_dict_t2[ids] = curr_df
 
-##### fit data sample N=3, T1 & T2
-fit_data_sample_2 = fit_data_noCV_irr_len_data(data_dict_t1, 0.01, False)
+##### fit data sample N=3, T1 & T2 // NO LOOCV
+#fit_data_sample_T1 = fit_data_noCV_irr_len_data(data_dict_t1, 0.01, False)
+# fit_data_sample_T2 = fit_data_noCV_irr_len_data(data_dict_t2, 0.01, False)
+
+##### fit data sample N=3, T1 & T2 // WITH LOOCV
+
+########## LLOCV
+
+
+#func calls & rand starts
+from model_functions_BFGS import VIEW_INDIPENDENTxCONTEXT,VIEW_INDIPENDENTxCONTEXT_CV
+from tqdm import tqdm
+from functools import partial
+from scipy import optimize
+vpn = '1_A'
+curr_data_vpn = data_dict_t1[vpn].copy()
+
+cv_score = []
+for indx,row in tqdm(curr_data_vpn.iterrows()):
+    print(indx)
+    # holdout data
+    holdout_data = curr_data_vpn.copy().loc[indx]
+    
+    
+    
+    # opt data for model
+    test_data = curr_data_vpn.copy().drop(axis=0,index = indx)
+    
+    
+    stim_IDs = test_data['stim_IDs'] #stimulus IDs of winning model 
+    new_ID = test_data['new_IDs'] #trials where new ID is introduced 
+    numb_prev_presentations = test_data['n_prev_pres'] #number_of_prev_presentations
+    stim_IDs_perspective = test_data[vpn+'_perspective'] #view dependent
+    VPN_output = test_data[vpn+'_answer'] #VPN answers
+    verbose = False
+    
+    parameter_est = {}
+    
+    ##### Model Optim
+    
+    i=vpn
+    print('VIEW_INDIPENDENTxCONTEXT')
+    data_M1 = [VPN_output, new_ID, numb_prev_presentations, stim_IDs,verbose]
+    
+    bounds_M1 = [(0,1),(0,1),(.1,20),(0,2)]
+    
+    part_func_M1 = partial(VIEW_INDIPENDENTxCONTEXT,data_M1) 
+    res1 = optimize.fmin_l_bfgs_b(part_func_M1,
+                                  approx_grad = True,
+                                  bounds = bounds_M1, 
+                                  x0 = [0.5 for i in range(len(bounds_M1))],
+                                  epsilon=0.01)
+    parameter_est['VIEW_INDIPENDENTxCONTEXT'] = res1[0]
+    data_M1[-1] = True 
+    data_M1_debug = data_M1.copy()
+    params_m_1 = res1[0]
+    m_1 = VIEW_INDIPENDENTxCONTEXT(data_M1_debug, params_m_1)
+    action = m_1[1]['data_store_1'].loc[indx]['vpn_answer']
+    if indx == 0:
+        init_V = m_1[1]['init_val']['init_v']
+        init_C = m_1[1]['init_val']['init_c']
+    else:
+        data_cv_score = m_1[1]['data_store_1'].loc[indx-1]
+        init_V = data_cv_score['history_V']
+        init_C = data_cv_score['history_C']
+    
+    cv_trial = VIEW_INDIPENDENTxCONTEXT_CV(params_m_1,init_V,init_C,action)
+    cv_score.append(cv_trial)
+
+
+
+'''
 
 
 #fit_data_sample_2 = fit_data_noCV(data_2_sample['imputed_data'], 0.01, False)
@@ -74,4 +144,4 @@ at_model = model_selection_AT()
 
 
 ##### T2
-
+'''
