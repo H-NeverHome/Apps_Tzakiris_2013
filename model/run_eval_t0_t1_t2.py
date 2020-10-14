@@ -37,15 +37,17 @@ for ids in unq_ids:
     curr_df_raw['new_IDs'] = list(data_2_sample['stat_ground-truth']['new_IDs'])
     curr_df_raw['n_prev_pres'] = list(data_2_sample['stat_ground-truth']['number_of_prev_presentations_raw '])
     
-    curr_df = curr_df_raw.loc[curr_df_raw[ids+'_answer'].isna() == False]
-    data_dict_total[ids] = curr_df
+    curr_df = curr_df_raw.loc[curr_df_raw[ids+'_answer'].isna() == False].copy()
+    curr_df_1 = curr_df.reset_index(drop=True, inplace=False)
+    data_dict_total[ids] = curr_df_1
     if 'A' in ids:
-        data_dict_t1[ids] = curr_df
+        data_dict_t1[ids] = curr_df_1
     elif 'B' in ids:
-        data_dict_t2[ids] = curr_df
+        data_dict_t2[ids] = curr_df_1
 
 ##### fit data sample N=3, T1 & T2 // NO LOOCV
-#fit_data_sample_T1 = fit_data_noCV_irr_len_data(data_dict_t1, 0.01, False)
+
+fit_data_sample_T1 = fit_data_noCV_irr_len_data(data_dict_t1, 0.01, False)
 # fit_data_sample_T2 = fit_data_noCV_irr_len_data(data_dict_t2, 0.01, False)
 
 ##### fit data sample N=3, T1 & T2 // WITH LOOCV
@@ -62,8 +64,11 @@ vpn = '1_A'
 curr_data_vpn = data_dict_t1[vpn].copy()
 
 cv_score = []
-for indx,row in tqdm(curr_data_vpn.iterrows()):
-    print(indx)
+
+finito = False
+   
+for indx in tqdm(range(curr_data_vpn.shape[0])):
+    #print(indx)
     # holdout data
     holdout_data = curr_data_vpn.copy().loc[indx]
     
@@ -77,7 +82,7 @@ for indx,row in tqdm(curr_data_vpn.iterrows()):
     new_ID = test_data['new_IDs'] #trials where new ID is introduced 
     numb_prev_presentations = test_data['n_prev_pres'] #number_of_prev_presentations
     stim_IDs_perspective = test_data[vpn+'_perspective'] #view dependent
-    VPN_output = test_data[vpn+'_answer'] #VPN answers
+    VPN_output = test_data[vpn+'_answer'].copy() #VPN answers
     verbose = False
     
     parameter_est = {}
@@ -85,7 +90,7 @@ for indx,row in tqdm(curr_data_vpn.iterrows()):
     ##### Model Optim
     
     i=vpn
-    print('VIEW_INDIPENDENTxCONTEXT')
+    #print('VIEW_INDIPENDENTxCONTEXT')
     data_M1 = [VPN_output, new_ID, numb_prev_presentations, stim_IDs,verbose]
     
     bounds_M1 = [(0,1),(0,1),(.1,20),(0,2)]
@@ -101,7 +106,7 @@ for indx,row in tqdm(curr_data_vpn.iterrows()):
     data_M1_debug = data_M1.copy()
     params_m_1 = res1[0]
     m_1 = VIEW_INDIPENDENTxCONTEXT(data_M1_debug, params_m_1)
-    action = m_1[1]['data_store_1'].loc[indx]['vpn_answer']
+    action = holdout_data[vpn+'_answer']
     if indx == 0:
         init_V = m_1[1]['init_val']['init_v']
         init_C = m_1[1]['init_val']['init_c']
@@ -109,10 +114,10 @@ for indx,row in tqdm(curr_data_vpn.iterrows()):
         data_cv_score = m_1[1]['data_store_1'].loc[indx-1]
         init_V = data_cv_score['history_V']
         init_C = data_cv_score['history_C']
-    
     cv_trial = VIEW_INDIPENDENTxCONTEXT_CV(params_m_1,init_V,init_C,action)
     cv_score.append(cv_trial)
 
+fin = np.sum(cv_score)
 
 
 '''

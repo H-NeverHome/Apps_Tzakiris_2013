@@ -32,7 +32,7 @@ def VIEW_INDIPENDENTxCONTEXT(data,params):
     beta = params[2]
     lamd_a = params[3]
     
-    VPN_output = data[0]
+    VPN_output = data[0].copy()
     new_ID = data[1]
     numb_prev_presentations = data[2]
     stim_IDs = data[3]
