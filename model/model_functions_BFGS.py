@@ -113,6 +113,38 @@ def VIEW_INDIPENDENTxCONTEXT(data,params):
                       'init_val':{'init_v': FP_rate,'init_c' : 0}}
         return (model_evidence,data_store)
    
+##### CV
+
+def VIEW_INDIPENDENTxCONTEXT_CV(params,old_vfam,old_cfam,action):
+    
+    alpha = params[0]
+    sigma = params[1]
+    beta = params[2]
+    lamd_a = params[3]
+    
+    old_Vfam = old_vfam
+    old_c = old_cfam
+    action = action
+
+    # Update VFam
+    vfam_PE = (lamd_a - old_Vfam)
+    new_Vfam = old_Vfam + (alpha*vfam_PE)
+
+    # Update C Fam   
+    context_PE = (old_c - old_Vfam)
+    new_c = old_c - (sigma * context_PE)
+
+    
+    ### get totfam
+    totfam = new_c*new_Vfam 
+    p_yes = np.around((1/ (1+ np.exp((-1*beta)*totfam))), decimals=5)+ 0.000001
+    p_no = np.around((1-p_yes), decimals=5) + 0.000001
+    trial_score = 0
+    if action == 1:
+        return np.log(p_yes)
+    if action == 0:
+        return np.log(p_no)
+
 
 ################################### Control Model: VIEW_DEPENDENT #############################################
 #params = [alpha, beta, lamd_a]
@@ -150,7 +182,7 @@ def VIEW_DEPENDENT(data, params):
 
     history_answer = []
     history_total = []
-   
+    history_V_tot = []
     ### inner loop through trials
     for stim_ID,action,num_pres,trial in zip(stim_IDs_perspective,VPN_output,numb_presentations,range(len(stim_IDs))):
        
@@ -159,7 +191,7 @@ def VIEW_DEPENDENT(data, params):
         
         ### Update view_dep familarity
         new_fam = old_fam + (alpha * (lamd_a-old_fam)) # compute new stim familiarity
-        
+        history_V_tot.append(new_fam)
         # protocol data
         newfamlist = history_V_depend[stim_ID].copy() + [new_fam] # append new stim familiarity to list
         history_V_depend[stim_ID] = newfamlist # replace list in dict
@@ -179,14 +211,36 @@ def VIEW_DEPENDENT(data, params):
     model_evidence = np.log(history_answer).sum()
     if verbose == True:
         data_store = {'history_answer': history_answer,
+                      'history_V_cv' : history_V_tot,
                       'history_V': history_V_depend,
                       'history_total':history_total,
                       'params':[alpha, beta, lamd_a],
                       'log_like': model_evidence,
-                      'suppl': [FP_rate,numb_presentations, VPN_output]}
+                      'suppl': [FP_rate,numb_presentations, VPN_output],
+                      'init_val': FP_rate}
         return (model_evidence,data_store)
     elif verbose == False:
          return -1*model_evidence
+
+def VIEW_DEPENDENT_CV(params, old_fam, action):
+    # ML Parameters 
+    alpha, beta, lamd_a = params[0], params[1], params[2]
+    
+    ### Update view_dep familarity
+    new_fam = old_fam + (alpha * (lamd_a-old_fam)) # compute new stim familiarity
+       
+    ### get totfam @ time t
+    totfam = new_fam    
+
+    #get answer prob
+    p_yes = np.around((1/ (1+ np.exp((-1*beta)*totfam))), decimals=5)+ 0.000001
+    p_no = np.around((1-p_yes), decimals=5) + 0.000001
+
+    if action == 1:
+        return np.log(p_yes)
+    if action == 0:
+        return np.log(p_no)
+    
 
 
 ################################### Control Model: VIEW_DEPENDENTxCONTEXT_DEPENDENT MODEL #############################################
@@ -247,7 +301,7 @@ def VIEW_DEPENDENTxCONTEXT_DEPENDENT(data, params):
         ### get totfam @ time t
         totfam = new_fam * new_c 
         
-        history_V_dep.append((old_Vfam,new_fam))
+        history_V_dep.append(new_fam)
         history_total.append(totfam)
 
         #get answer prob
@@ -260,16 +314,47 @@ def VIEW_DEPENDENTxCONTEXT_DEPENDENT(data, params):
             history_answer.append(p_no)
     model_evidence = np.log(history_answer).sum()
     data_store = {'history_answer': history_answer,
-                  'history_V': history_V_depend,
+                  'history_V_dep': history_V_dep,
                   'history_total':history_total,
                   'history_C': history_C,
                   'params':[alpha, sigma, beta, lamd_a],
                   'log_like': model_evidence,
-                  'suppl': [FP_rate]}
+                  'suppl': FP_rate}
     if verbose == False:
         return -1*model_evidence
     elif verbose == True:
         return (model_evidence,data_store)
+
+
+def VIEW_DEPENDENTxCONTEXT_DEPENDENT_CV(params, old_Vfam_dep, old_c, action):
+    
+    # Data & Parameter
+    alpha, sigma, beta, lamd_a = params[0], params[1], params[2], params[3],
+
+    ### Get all data for current trial
+    old_Vfam = old_Vfam_dep # previos stim familiarity
+    old_c = old_c # duh
+
+    ### Update view_dep familarity
+    new_fam = old_Vfam + (alpha * (lamd_a-old_Vfam)) # compute new stim familiarity
+    # Update C Fam   
+    new_c = old_c - (sigma * (old_c - new_fam))         
+
+    ### get totfam @ time t
+    totfam = new_fam * new_c 
+    
+
+    #get answer prob
+    p_yes = np.around((1/ (1+ np.exp((-1*beta)*totfam))), decimals=5)+ 0.000001
+    p_no = np.around((1-p_yes), decimals=5) + 0.000001 # implemented constant as to avoid np.log(0)
+    #print(p_yes,p_no)
+    if action == 1:
+        return np.log(p_yes)
+    if action == 0:
+         return np.log(p_no)
+    
+   
+
 
 # ################################### Control Model: VIEW_INDEPENDENT MODEL #############################################
 #params = [alpha, beta, lamd_a]
@@ -292,6 +377,7 @@ def VIEW_INDEPENDENT(data, params):
     history_total = []
     history_answer = []
     model_evidence = 0
+    vfam_tot = []
     
     ### inner loop through trials
     for stim_ID,action,num_pres,trial in zip(stim_IDs,VPN_output,numb_prev_presentations,range(len(stim_IDs))):
@@ -303,7 +389,7 @@ def VIEW_INDEPENDENT(data, params):
         err_V = lamd_a - old_Vfam
         w_err_V = alpha*err_V
         new_Vfam = old_Vfam + w_err_V
-
+        vfam_tot.append(new_Vfam)
         ### get totfam
         totfam = new_Vfam    
         history_total.append(totfam)
@@ -322,13 +408,40 @@ def VIEW_INDEPENDENT(data, params):
     model_evidence = np.log(history_answer).sum()
     data_store = {'history_answer': history_answer,
                   'history_V': history_V,
+                  'vfam_tot':vfam_tot,
                   'history_total':history_total,
                   'params':[alpha, beta, lamd_a],
-                  'log_like': model_evidence}
+                  'log_like': model_evidence,
+                  'suppl': FP_rate}
     if verbose == False:
         return -1*model_evidence
     elif verbose == True:
         return (model_evidence,data_store)     
+
+def VIEW_INDEPENDENT_CV(params, old_Vfam, action):
+    
+    alpha, beta, lamd_a = params[0], params[1], params[2],
+    
+    ### Get predicted V_fam, C from last trial
+    old_Vfam = old_Vfam
+        
+    # Update VFam
+    err_V = lamd_a - old_Vfam
+    w_err_V = alpha*err_V
+    new_Vfam = old_Vfam + w_err_V
+
+    ### get totfam
+    totfam = new_Vfam    
+
+    
+    p_yes = np.around((1/ (1+ np.exp((-1*beta)*totfam))), decimals=5)+ 0.000001
+    p_no = np.around((1-p_yes), decimals=5) + 0.000001
+
+    if action == 1:
+        return np.log(p_yes)
+    if action == 0:
+        return np.log(p_no)
+    
 
 
 # ################################### Control Model: VIEW_INDEPENDENTxVIEW_DEPENDENT MODEL #############################################  
@@ -415,7 +528,51 @@ def VIEW_INDEPENDENTxVIEW_DEPENDENT(data, params):
     elif verbose == True:
         return (model_evidence, data_store)  
 
+def VIEW_INDEPENDENTxVIEW_DEPENDENT_CV(params,old_fam_depend,old_fam_indipend ):
+    alpha_ind, alpha_dep, beta, lamd_a_ind, lamd_a_dep = params[0], params[1],params[2],params[3],params[4],
 
+    ### Get all data for current trial
+    old_fam_depend = old_fam_depend
+    old_fam_indipend = old_fam_indipend
+    
+    # update view-independent
+    new_fam_ind = old_fam_indipend + (alpha_ind * (lamd_a_ind - old_fam_indipend))
+    # update view-dependent
+    new_fam_dep = old_fam_depend + (alpha_dep * (lamd_a_dep - old_fam_depend)) # compute new stim familiarity
+            
+    #protocol data
+    new_fam_indipend_list = history_V_independ[stim_ID_indipend].copy() + [new_fam_ind] # append new stim familiarity to list
+    new_fam_depend_list = history_V_depend[stim_ID_depend].copy() + [new_fam_dep]
+    history_V_depend[stim_ID_depend] = new_fam_depend_list # replace list in dict
+    history_V_independ[stim_ID_indipend] = new_fam_indipend_list
+
+
+    ### get totfam @ time t
+    totfam = new_fam_ind + new_fam_dep   
+    history_total.append(totfam)
+
+    #get answer prob
+    p_yes = np.around((1/ (1+ np.exp((-1*beta)*totfam))), decimals=5)+ 0.000001
+    p_no = np.around((1-p_yes), decimals=5) + 0.000001
+
+    if action == 1:
+        history_answer.append(p_yes)
+    if action == 0:
+        history_answer.append(p_no)
+    model_evidence = np.log(history_answer).sum()
+    data_store = {'history_answer': history_answer,
+                  'history_V_depend': history_V_depend,
+                  'history_V_independ': history_V_independ,
+                  'history_total': history_total,
+                  'params': [alpha_ind, alpha_dep, beta, lamd_a_ind, lamd_a_dep],
+                  'log_like': model_evidence}
+    if verbose == False:
+        return -1*model_evidence
+    elif verbose == True:
+        return (model_evidence, data_store)  
+    ### inner loop through trials
+    for stim_ID_depend, stim_ID_indipend, action,num_pres_depend, num_pres_independ,trial in zip(stim_IDs_perspective,stim_IDs,VPN_output,numb_presentations,numb_prev_presentations,range(len(stim_IDs))):
+       
 
 # ################################### Control Model: VIEW_INDEPENDENTxVIEW_DEPENDENT MODELxCONTEXT MODEL #############################################
 #params = [alpha_ind, alpha_dep, sigma, beta, lamd_a_ind, lamd_a_dep]
@@ -521,113 +678,6 @@ def VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT(data, params):
 
 
 
-def VIEW_INDIPENDENTxCONTEXT_CV(params,old_vfam,old_cfam,action):
-    
-    alpha = params[0]
-    sigma = params[1]
-    beta = params[2]
-    lamd_a = params[3]
-    
-    # VPN_output = data[0]
-    # new_ID = data[1]
-    # numb_prev_presentations = data[2]
-    # stim_IDs = data[3]
-    # verbose = data[4]
-    
-    old_Vfam = old_vfam
-    old_c = old_cfam
-    action = action
-    
-    # # get false positive answer rate
-    # trials_FP = len(VPN_output)
-    # FP_rate_raw = 0
-    # for i,j in zip(numb_prev_presentations, VPN_output):
-    #     if i==1 and j==1: # check if incorrectly assumed known at first presentation
-    #         FP_rate_raw +=1
-    # FP_rate = (FP_rate_raw / trials_FP)*lamd_a
-
-    
-
-    
-    # ### Get predicted V_fam, C from last trial
-    # if trial_0 == True:
-    #     old_Vfam = FP_rate
-    #     old_c = 0
-    # Update VFam
-    vfam_PE = (lamd_a - old_Vfam)
-    new_Vfam = old_Vfam + (alpha*vfam_PE)
-
-    # Update C Fam   
-    context_PE = (old_c - old_Vfam)
-    new_c = old_c - (sigma * context_PE)
-
-    
-    ### get totfam
-    totfam = new_c*new_Vfam 
-    p_yes = np.around((1/ (1+ np.exp((-1*beta)*totfam))), decimals=5)+ 0.000001
-    p_no = np.around((1-p_yes), decimals=5) + 0.000001
-    trial_score = 0
-    if action == 1:
-        trial_score += np.log(p_yes)
-    if action == 0:
-        trial_score += np.log(p_no)
-    return trial_score
 
 
 
-
-
-
-    # ### inner loop through trials
-    
-    
-    
-    
-    # for stim_ID,action,num_pres,trial in zip(stim_IDs,VPN_output,numb_prev_presentations,range(len(stim_IDs))):
-        
-    #     ### Get predicted V_fam, C from last trial
-    #     old_Vfam = history_V[stim_ID][-1]
-    #     old_c = history_C[-1]
-        
-    #     # Update VFam
-    #     vfam_PE = (lamd_a - old_Vfam)
-    #     new_Vfam = old_Vfam + (alpha*vfam_PE)
-
-    #     # Update C Fam   
-    #     context_PE = (old_c - old_Vfam)
-    #     new_c = old_c - (sigma * context_PE)
-
-        
-    #     ### get totfam
-    #     totfam = new_c*new_Vfam    
-    #     history_total.append(totfam)       
-
-    #     #get answer prob
-    #     p_yes = np.around((1/ (1+ np.exp((-1*beta)*totfam))), decimals=5)+ 0.000001
-    #     p_no = np.around((1-p_yes), decimals=5) + 0.000001
-
-    #     if action == 1:
-    #         history_answer.append(p_yes)
-    #         #model_evidence += np.log(p_yes)
-    #     if action == 0:
-    #         history_answer.append(p_no)
-    #         #model_evidence += np.log(p_no)
-    # model_evidence = np.log(history_answer.copy()).sum()
-    # if verbose == False:
-    #     return -1*model_evidence
-    # elif verbose == True:
-    #     data_store_1 = pd.DataFrame()
-    #     data_store_1['history_V'] = history_V_ind
-    #     data_store_1['history_C'] = history_C[1::]
-    #     data_store_1['history_total'] = history_total
-    #     data_store_1['vfam_PE'] = vfam_PE_list
-    #     data_store_1['context_PE'] = history_C_pe
-    #     data_store_1['vpn_answer'] = VPN_output
-        
-        
-    #     data_store = {'history_answer': history_answer,
-    #                   'params':[alpha, sigma, beta, lamd_a],
-    #                   'log_like': model_evidence,
-    #                   'data_store_1':data_store_1,
-    #                   'history_total':history_total}
-    

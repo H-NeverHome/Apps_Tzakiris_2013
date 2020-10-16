@@ -6,7 +6,7 @@ Created on Tue Oct 13 11:39:13 2020
 """
 
 
-from class_import import get_data,get_data_2,data_old_sample, fit_data_noCV
+from class_import import get_data,get_data_2,data_old_sample, fit_data_noCV,fit_data_CV
 from class_import import get_behavioral_performance,model_selection_AT,fit_data_noCV_irr_len_data
 import numpy as np
 import pandas as pd
@@ -50,74 +50,86 @@ for ids in unq_ids:
 fit_data_sample_T1 = fit_data_noCV_irr_len_data(data_dict_t1, 0.01, False)
 # fit_data_sample_T2 = fit_data_noCV_irr_len_data(data_dict_t2, 0.01, False)
 
-##### fit data sample N=3, T1 & T2 // WITH LOOCV
+aaaa = fit_data_CV(data_dict_t1, 0.01, False)
+# ##### fit data sample N=3, T1 & T2 // WITH LOOCV
+# import winsound
+# duration = 1000  # milliseconds
+# freq = 440  # Hz
+# winsound.Beep(freq, duration)
+# ########## LLOCV
 
-########## LLOCV
 
+# #func calls & rand starts
+# from model_functions_BFGS import VIEW_INDIPENDENTxCONTEXT,VIEW_INDIPENDENTxCONTEXT_CV
+# from tqdm import tqdm
+# from functools import partial
+# from scipy import optimize
 
-#func calls & rand starts
-from model_functions_BFGS import VIEW_INDIPENDENTxCONTEXT,VIEW_INDIPENDENTxCONTEXT_CV
-from tqdm import tqdm
-from functools import partial
-from scipy import optimize
-vpn = '1_A'
-curr_data_vpn = data_dict_t1[vpn].copy()
+# # for ID in collected ids
+# #do
 
-cv_score = []
+# vpn = '1_A'
+# curr_data_vpn = data_dict_t1[vpn].copy()
 
-finito = False
+# cv_score = []
+
+# finito = False
    
-for indx in tqdm(range(curr_data_vpn.shape[0])):
-    #print(indx)
-    # holdout data
-    holdout_data = curr_data_vpn.copy().loc[indx]
+# for indx in tqdm(range(curr_data_vpn.shape[0])):
+#     #print(indx)
+#     # holdout data
+#     holdout_data = curr_data_vpn.copy().loc[indx]
     
     
     
-    # opt data for model
-    test_data = curr_data_vpn.copy().drop(axis=0,index = indx)
+#     # opt data for model
+#     test_data = curr_data_vpn.copy().drop(axis=0,index = indx)
     
     
-    stim_IDs = test_data['stim_IDs'] #stimulus IDs of winning model 
-    new_ID = test_data['new_IDs'] #trials where new ID is introduced 
-    numb_prev_presentations = test_data['n_prev_pres'] #number_of_prev_presentations
-    stim_IDs_perspective = test_data[vpn+'_perspective'] #view dependent
-    VPN_output = test_data[vpn+'_answer'].copy() #VPN answers
-    verbose = False
+#     stim_IDs = test_data['stim_IDs'] #stimulus IDs of winning model 
+#     new_ID = test_data['new_IDs'] #trials where new ID is introduced 
+#     numb_prev_presentations = test_data['n_prev_pres'] #number_of_prev_presentations
+#     stim_IDs_perspective = test_data[vpn+'_perspective'] #view dependent
+#     VPN_output = test_data[vpn+'_answer'].copy() #VPN answers
+#     verbose = False
     
-    parameter_est = {}
+#     parameter_est = {}
     
-    ##### Model Optim
+#     ##### Model Optim
     
-    i=vpn
-    #print('VIEW_INDIPENDENTxCONTEXT')
-    data_M1 = [VPN_output, new_ID, numb_prev_presentations, stim_IDs,verbose]
+#     i=vpn
+#     ###### 'VIEW_INDIPENDENTxCONTEXT'
+#     data_M1 = [VPN_output, new_ID, numb_prev_presentations, stim_IDs,verbose]
     
-    bounds_M1 = [(0,1),(0,1),(.1,20),(0,2)]
+#     bounds_M1 = [(0,1),(0,1),(.1,20),(0,2)]
     
-    part_func_M1 = partial(VIEW_INDIPENDENTxCONTEXT,data_M1) 
-    res1 = optimize.fmin_l_bfgs_b(part_func_M1,
-                                  approx_grad = True,
-                                  bounds = bounds_M1, 
-                                  x0 = [0.5 for i in range(len(bounds_M1))],
-                                  epsilon=0.01)
-    parameter_est['VIEW_INDIPENDENTxCONTEXT'] = res1[0]
-    data_M1[-1] = True 
-    data_M1_debug = data_M1.copy()
-    params_m_1 = res1[0]
-    m_1 = VIEW_INDIPENDENTxCONTEXT(data_M1_debug, params_m_1)
-    action = holdout_data[vpn+'_answer']
-    if indx == 0:
-        init_V = m_1[1]['init_val']['init_v']
-        init_C = m_1[1]['init_val']['init_c']
-    else:
-        data_cv_score = m_1[1]['data_store_1'].loc[indx-1]
-        init_V = data_cv_score['history_V']
-        init_C = data_cv_score['history_C']
-    cv_trial = VIEW_INDIPENDENTxCONTEXT_CV(params_m_1,init_V,init_C,action)
-    cv_score.append(cv_trial)
+#     part_func_M1 = partial(VIEW_INDIPENDENTxCONTEXT,data_M1) 
+#     res1 = optimize.fmin_l_bfgs_b(part_func_M1,
+#                                   approx_grad = True,
+#                                   bounds = bounds_M1, 
+#                                   x0 = [0.5 for i in range(len(bounds_M1))],
+#                                   epsilon=0.01)
+#     parameter_est['VIEW_INDIPENDENTxCONTEXT'] = res1[0]
+#     data_M1[-1] = True 
+#     data_M1_debug = data_M1.copy()
+#     params_m_1 = res1[0]
+#     m_1 = VIEW_INDIPENDENTxCONTEXT(data_M1_debug, params_m_1)
+#     action = holdout_data[vpn+'_answer']
+#     init_V = 0
+#     init_C = 0
+#     if indx == 0:
+#         init_V += m_1[1]['init_val']['init_v']
+#         init_C += m_1[1]['init_val']['init_c']
+#     else:
+#         data_cv_score = m_1[1]['data_store_1'].loc[indx-1]
+#         init_V += data_cv_score['history_V']
+#         init_C += data_cv_score['history_C']
+    
+#     #(params,old_vfam,old_cfam,action)
+#     cv_trial = VIEW_INDIPENDENTxCONTEXT_CV(params_m_1,init_V,init_C,action)
+#     cv_score.append((action,cv_trial))
 
-fin = np.sum(cv_score)
+# fin = np.sum(cv_score)
 
 
 '''
