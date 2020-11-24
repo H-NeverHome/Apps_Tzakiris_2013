@@ -45,12 +45,18 @@ for ids in unq_ids:
     elif 'B' in ids:
         data_dict_t2[ids] = curr_df_1
 
-##### fit data sample N=3, T1 & T2 // NO LOOCV
+# ##### fit data sample N=3, T1 & T2 // NO LOOCV
 
 fit_data_sample_T1 = fit_data_noCV_irr_len_data(data_dict_t1, 0.01, False)
-# fit_data_sample_T2 = fit_data_noCV_irr_len_data(data_dict_t2, 0.01, False)
+fit_data_sample_T2 = fit_data_noCV_irr_len_data(data_dict_t2, 0.01, False)
+fit_data_sample_t1_t2_comb = fit_data_noCV_irr_len_data(data_dict_t2, 0.01, False
+# aaaa = fit_data_CV(data_dict_t1, 0.01, False)
 
-aaaa = fit_data_CV(data_dict_t1, 0.01, False)
+
+
+
+
+
 # ##### fit data sample N=3, T1 & T2 // WITH LOOCV
 # import winsound
 # duration = 1000  # milliseconds
