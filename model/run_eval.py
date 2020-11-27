@@ -7,7 +7,8 @@ Created on Wed Sep 16 09:48:28 2020
 
 from class_import import get_data,get_data_2,data_old_sample, fit_data_noCV
 from class_import import get_behavioral_performance,model_selection_AT
-from class_import import fit_data_noCV_irr_len_data,VIEW_INDIPENDENTxCONTEXT_t1_t2
+from class_import import fit_data_noCV_irr_len_data,data_fit_t1_t2_comb
+from class_import import fit_data_NUTS
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -67,12 +68,13 @@ at_model = model_selection_AT()
 
 # ##### fit data sample N=3, T1 & T2 SEPERATE // NO LOOCV // No imput
 
-fit_data_sample_T1 = fit_data_noCV_irr_len_data(data_dict_t1, 0.01, False)
-fit_data_sample_T2 = fit_data_noCV_irr_len_data(data_dict_t2, 0.01, False)
+# fit_data_sample_T1 = fit_data_noCV_irr_len_data(data_dict_t1, 0.01, False)
+# fit_data_sample_T2 = fit_data_noCV_irr_len_data(data_dict_t2, 0.01, False)
 
-### Appears to work
+# ### Appears to work
 
-fit_data_t1_t2 = VIEW_INDIPENDENTxCONTEXT_t1_t2(data_dict_t1,data_dict_t2, 0.01)
+# fit_data_t1_t2 = data_fit_t1_t2_comb(data_dict_t1,data_dict_t2, 0.01)
+fit_data_t1_t2_NUTS = fit_data_NUTS(data_dict_t1)
 # ##### fit data sample N=3, T1 & T2 COMBINED // NO LOOCV // No imput
 
 

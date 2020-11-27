@@ -677,7 +677,90 @@ def VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT(data, params):
 ########################################## CV
 
 
+############# EXP
+def VIEW_INDIPENDENTxCONTEXT_NUTS(data,alpha,sigma,beta,lamd_a):
+    
+    VPN_output = data[0].copy()
+    new_ID = data[1]
+    numb_prev_presentations = data[2]
+    stim_IDs = data[3]
+    verbose = data[4]
+    
+    # get false positive answer rate
+    #FP_rate = FP_rate_func(numb_prev_presentations, VPN_output, 189)
+    trials_FP = len(VPN_output)
+    FP_rate_raw = 0
+    for i,j in zip(numb_prev_presentations, VPN_output):
+        if i==1 and j==1: # check if incorrectly assumed known at first presentation
+            FP_rate_raw +=1
+    FP_rate = (FP_rate_raw / trials_FP)*lamd_a
 
+    
+    ### dict for Trackkeeping of history
+    history_V = dict.fromkeys([i for i in range(1,25)], [FP_rate]) #set initial value of view_ind_fam as FP rate A&T pg.8 R
+    history_C = [0]
+    history_C_pe = []
+    history_V_ind = []
+    history_total = []
+    history_answer = []
+    model_evidence = 0
+    vfam_PE_list = []
+
+    ### inner loop through trials
+    for stim_ID,action,num_pres,trial in zip(stim_IDs,VPN_output,numb_prev_presentations,range(len(stim_IDs))):
+        
+        ### Get predicted V_fam, C from last trial
+        old_Vfam = history_V[stim_ID][-1]
+        old_c = history_C[-1]
+        
+        # Update VFam
+        vfam_PE = (lamd_a - old_Vfam)
+        new_Vfam = old_Vfam + (alpha*vfam_PE)
+        vfam_PE_list.append(vfam_PE)
+        newfamlist = history_V[stim_ID].copy() + [new_Vfam]
+        history_V[stim_ID] = newfamlist
+        history_V_ind.append(new_Vfam)
+        # Update C Fam   
+        context_PE = (old_c - old_Vfam)
+        new_c = old_c - (sigma * context_PE)
+        history_C_pe.append(context_PE)
+        history_C.append(new_c)
+        
+        ### get totfam
+        totfam = new_c*new_Vfam    
+        history_total.append(totfam)       
+
+        #get answer prob
+        p_yes = np.around((1/ (1+ np.exp((-1*beta)*totfam))), decimals=5)+ 0.000001
+        p_no = np.around((1-p_yes), decimals=5) + 0.000001
+
+        if action == 1:
+            history_answer.append(p_yes)
+            #model_evidence += np.log(p_yes)
+        if action == 0:
+            history_answer.append(p_no)
+            #model_evidence += np.log(p_no)
+    model_evidence = np.log(history_answer.copy()).sum()
+    return model_evidence
+    # if verbose == False:
+    #     return -1*model_evidence
+    # elif verbose == True:
+    #     data_store_1 = pd.DataFrame()
+    #     data_store_1['history_V'] = history_V_ind
+    #     data_store_1['history_C'] = history_C[1::]
+    #     data_store_1['history_total'] = history_total
+    #     data_store_1['vfam_PE'] = vfam_PE_list
+    #     data_store_1['context_PE'] = history_C_pe
+    #     data_store_1['vpn_answer'] = VPN_output
+
+        
+    #     data_store = {'history_answer': history_answer,
+    #                   'params':[alpha, sigma, beta, lamd_a],
+    #                   'log_like': model_evidence,
+    #                   'data_store_1':data_store_1,
+    #                   'history_total':history_total,
+    #                   'init_val':{'init_v': FP_rate,'init_c' : 0}}
+    #     return (model_evidence,data_store)
 
 
 
