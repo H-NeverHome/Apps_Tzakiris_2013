@@ -9,6 +9,7 @@ from class_import import get_data,get_data_2,data_old_sample, fit_data_noCV
 from class_import import get_behavioral_performance,model_selection_AT
 from class_import import fit_data_noCV_irr_len_data,data_fit_t1_t2_comb
 from class_import import fit_data_NUTS
+import matlab.engine
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -68,13 +69,34 @@ at_model = model_selection_AT()
 
 # ##### fit data sample N=3, T1 & T2 SEPERATE // NO LOOCV // No imput
 
-# fit_data_sample_T1 = fit_data_noCV_irr_len_data(data_dict_t1, 0.01, False)
-# fit_data_sample_T2 = fit_data_noCV_irr_len_data(data_dict_t2, 0.01, False)
+fit_data_sample_T1 = fit_data_noCV_irr_len_data(data_dict_t1, 0.01, False)
+fit_data_sample_T2 = fit_data_noCV_irr_len_data(data_dict_t2, 0.01, False)
+
+
+#### Bayes Between Cond RFX Model Select
+
+a_t = fit_data_sample_T1['subject_level_model_evidence'].copy()
+b_t = fit_data_sample_T2['subject_level_model_evidence'].copy()
+eng = matlab.engine.start_matlab()
+
+#see https://mbb-team.github.io/VBA-toolbox/wiki/BMS-for-group-studies/#between-conditions-rfx-bms
+
+# mt array(rows,columns,sheets)
+# RFX-array(models,subjects,cond)
+
+abcd= np.zeros([6,3,2])
+abcd[:,:,0] = [[j for j in i[1]] for i in a_t.iterrows()]
+abcd[:,:,1] = [[j for j in i[1]] for i in b_t.iterrows()]
+
+aaaa = matlab.double(abcd.tolist())
+print(aaaa)
+func = eng.VBA_groupBMC_btwConds(aaaa)
+
 
 # ### Appears to work
 
 # fit_data_t1_t2 = data_fit_t1_t2_comb(data_dict_t1,data_dict_t2, 0.01)
-fit_data_t1_t2_NUTS = fit_data_NUTS(data_dict_t1)
+#fit_data_t1_t2_NUTS = fit_data_NUTS(data_dict_t1)
 # ##### fit data sample N=3, T1 & T2 COMBINED // NO LOOCV // No imput
 
 
