@@ -5,6 +5,7 @@ Created on Wed Sep 16 09:45:32 2020
 @author: de_hauk
 """
 
+########### Fetch Data Funcs
 
 def get_data(path):
     import pandas as pd
@@ -18,7 +19,6 @@ def get_data(path):
     return {'data':data,
             'view_ind_data':sample_answer_clms,
             'view_dep_data':sample_perspective_clms}
-
 
 def get_data_2(path_raw_data, ground_truth_file):
     ### Process raw data under path, nothin prestored
@@ -209,7 +209,82 @@ def data_old_sample(path):
             'DATA_imput': DATA_imput,
             }
 
+def reformat_data_within_T(data_2_sample):
+    ref_dat_raw = data_2_sample['raw_data']
+    unq_ids = data_2_sample['unique_ID']
+    
+    
+    data_dict_total = {}
+    data_dict_t1 = {}
+    data_dict_t2 = {}
+    for ids in unq_ids:
+        curr_df_raw = ref_dat_raw[[i for i in ref_dat_raw if ids in i]].copy()
+        curr_df_raw['stim_IDs'] = list(data_2_sample['stat_ground-truth']['stim_IDs'])
+        curr_df_raw['new_IDs'] = list(data_2_sample['stat_ground-truth']['new_IDs'])
+        curr_df_raw['n_prev_pres'] = list(data_2_sample['stat_ground-truth']['number_of_prev_presentations_raw '])
+        
+        curr_df = curr_df_raw.loc[curr_df_raw[ids+'_answer'].isna() == False].copy()
+        curr_df_1 = curr_df.reset_index(drop=True, inplace=False)
+        data_dict_total[ids] = curr_df_1
+        if 'A' in ids:
+            data_dict_t1[ids] = curr_df_1
+        elif 'B' in ids:
+            data_dict_t2[ids] = curr_df_1
+    return ('data_dict_t1',data_dict_t1,'data_dict_t2',data_dict_t2)
 
+
+########### Task & Reliability Funcs 
+
+def get_behavioral_performance(subject_data):
+    import pandas as pd
+    data = subject_data
+    ########## Behavioral Performance only raw_dat
+
+    vpn_ids = [i.split('_a')[0] for i in data['raw_data'] if 'answer' in i]
+    vpn_answer = [i for i in data['raw_data'] if 'answer' in i]
+    vpn_perf = [i.split('_a')[0] for i in data['raw_data'] if '_perf' in i]
+    behavioral_perf = pd.DataFrame(index = vpn_ids)
+    
+    ##### Get %-correct
+    perf_dat = [(data['raw_data'][i].copy().sum()/ len(data['raw_data'][i]))*100 for i in vpn_perf]
+    behavioral_perf['%-correct'] = perf_dat
+    
+    ##### Get n_errors
+    behavioral_perf['n_errors'] = [len(data['raw_data'][i])-data['raw_data'][i].sum() for i in vpn_perf]
+    
+    ##### Get Missed
+    
+    behavioral_perf['missed_answers'] = [data['raw_data'][i].isna().sum() for i in data['raw_data'] if 'answer' in i]
+    
+    final_dict = {'behavioral_results': behavioral_perf,
+                  'used_data':data['raw_data']}
+    return final_dict
+
+def task_icc(task_perf):
+    import pingouin as pg
+    import pandas as pd
+    icc_data = task_perf['behavioral_results'].copy()
+    icc_data['time'] = [i[-1] for i in icc_data.index]
+    icc_data['id'] = [i[0] for i in icc_data.index]
+
+    icc = pg.intraclass_corr(data=icc_data, 
+                         targets='id', 
+                         raters='time',
+                         ratings='%-correct').round(3)
+    return icc
+
+def pears_corr(task_perf):
+    import pingouin as pg
+    import pandas as pd
+    corr_data = task_perf['behavioral_results'].copy()
+    corr_data['time'] = [i[-1] for i in corr_data.index]
+    corr_data_A = corr_data.loc[corr_data['time'] == 'A']['%-correct']
+    corr_data_B = corr_data.loc[corr_data['time'] == 'B']['%-correct']
+    corr = pg.corr(corr_data_A, corr_data_B, tail='two-sided', method='pearson')
+    return corr
+
+
+########### Data Fitting Funcs
 
 def fit_data_noCV(data, lbfgs_epsilon, verbose_tot):
         
@@ -446,105 +521,6 @@ def fit_data_noCV(data, lbfgs_epsilon, verbose_tot):
                 'subject_level_parameter-estimates':parameter_est,
                 'subject_level_trialwise_data_win_model':trialwise_data}
                 
-def get_behavioral_performance(subject_data):
-    import pandas as pd
-    data = subject_data
-    ########## Behavioral Performance only raw_dat
-
-    vpn_ids = [i.split('_a')[0] for i in data['raw_data'] if 'answer' in i]
-    vpn_answer = [i for i in data['raw_data'] if 'answer' in i]
-    vpn_perf = [i.split('_a')[0] for i in data['raw_data'] if '_perf' in i]
-    behavioral_perf = pd.DataFrame(index = vpn_ids)
-    
-    ##### Get %-correct
-    perf_dat = [(data['raw_data'][i].copy().sum()/ len(data['raw_data'][i]))*100 for i in vpn_perf]
-    behavioral_perf['%-correct'] = perf_dat
-    
-    ##### Get n_errors
-    behavioral_perf['n_errors'] = [len(data['raw_data'][i])-data['raw_data'][i].sum() for i in vpn_perf]
-    
-    ##### Get Missed
-    
-    behavioral_perf['missed_answers'] = [data['raw_data'][i].isna().sum() for i in data['raw_data'] if 'answer' in i]
-    
-    final_dict = {'behavioral_results': behavioral_perf,
-                  'used_data':data['raw_data']}
-    return final_dict
-
-
-   
-def model_selection_AT():
-    import pandas as pd
-    import numpy as np
-    from scipy import special
-    ########## Data Transcribed from paper
-    
-    ##### Model_selection
-    # Formulas from: 
-    #   Glover, S., Dixon, P. 
-    #   Likelihood ratios: A simple and flexible statistic for empirical psychologists. 
-    #   Psychonomic Bulletin & Review 11, 791–806 (2004). 
-    #   https://doi.org/10.3758/BF03196706
-    
-    ll_raw = {'View-dependent': [-1590,3],
-              'View-dependent_context-dependent': [-1510,4],
-              'View-INdependent': [-1480,3],
-              'View-independent_context-dependent': [-1425,4],
-              'View-independent_View-dependent': [-1475,5],
-              'View-independent_View-dependent_context-dependent': [-1430,6],
-              }
-    ll_dat = pd.DataFrame.from_dict(data=ll_raw)
-    ll_dat['indx']=['ll','n_param']
-    ll_dat.set_index(keys='indx',inplace=True)
-    
-    model_win = 'View-independent_context-dependent'
-    model_cntrl = [i for i in ll_dat if i != model_win]
-    model_all = [i for i in ll_dat]
-    
-    ll_fin = pd.DataFrame(index = ['LR','LR_corr'])
-    n_size = 16
-    
-    
-    for i in model_cntrl:
-        # Get Log-Likelihoods
-        cntrl_ll = ll_dat[i][0]
-        win_ll = ll_dat[model_win][0]
-        
-        # Get n_params
-        win_nparam = ll_dat[model_win][1]
-        cntrl_nparam = ll_dat[i][1]
-        
-
-    
-        # uncorr LR
-        lr_var = -2*(cntrl_ll-win_ll)
-        # corr LL -> Glover & Dixon, 2004
-        lr_corr = lr_var*((np.exp((cntrl_nparam-win_nparam)))**(np.log(n_size)/2))
-        
-        # POSITIVE VALUES FAVOR WINNING MODEL
-        ll_fin[i] = [lr_var]+[lr_corr]
-    
-    # Compare Multiple Models, lambda_mult     
-    lmbda_mult = -2*(special.logsumexp(np.array(ll_dat.T['ll'])-ll_dat[model_win][0]))
-    
-    #transpose 
-    
-    
-    #get BIC
-    bic = []
-    for i in model_all:
-        raw_ll = ll_dat[i][0]
-        nparam = ll_dat[i][1]
-        bic_raw = (nparam*np.log(n_size))-(2*raw_ll)
-        bic.append(bic_raw)
-    
-    ll_dat = ll_dat.T
-    ll_dat['BIC'] = bic
-    return {'AT_model_selection_results_nparams': ll_dat,
-            'lambda_mult_model_selection':lmbda_mult,
-            'LR_fin': ll_fin}   
-
-
 def fit_data_noCV_irr_len_data(data, lbfgs_epsilon, verbose_tot):
         
     from model_functions_BFGS import VIEW_INDIPENDENTxCONTEXT,VIEW_DEPENDENT,VIEW_DEPENDENTxCONTEXT_DEPENDENT
@@ -784,6 +760,494 @@ def fit_data_noCV_irr_len_data(data, lbfgs_epsilon, verbose_tot):
     elif verbose_tot==False:
         return results_1
 
+def data_fit_t1_t2_comb(data_t1,data_t2, lbfgs_epsilon):
+    from model_functions_BFGS import VIEW_INDIPENDENTxCONTEXT
+    from tqdm import tqdm
+    import pandas as pd
+    import numpy as np
+    from functools import partial
+    from scipy import optimize,special
+    np.random.seed(1993)
+
+    #### get unique IDS
+    unique_id_t1 = list(data_t1.keys())
+    unique_id_t2 = list(data_t2.keys())
+    
+    sample_answer_clms_t1 = [i+'_answer' for i in unique_id_t1]
+    sample_answer_clms_t2 = [i+'_answer' for i in unique_id_t2]
+    
+    sample_perspective_clms = [i+'_perspective' for i in unique_id_t1]
+    sample_perspective_clms = [i+'_perspective' for i in unique_id_t2]
+    
+    epsilon_param = lbfgs_epsilon
+    x_0_bfgs = 0.5
+    params_M1_name = ['alpha', 'sigma', 'beta', 'lamd_a']     
+    models_names = ['VIEW_INDIPENDENTxCONTEXT']
+    
+    parameter_est = {'VIEW_INDIPENDENTxCONTEXT': pd.DataFrame(index=params_M1_name)}                    
+    
+    data_verbose_debug = {}
+    res_evidence = pd.DataFrame(index=models_names)
+    trialwise_data = {}
+    bf_log_group = pd.DataFrame()
+    
+    for vpn_t1,vpn_t2 in zip(unique_id_t1,unique_id_t2):
+        print(vpn_t1,vpn_t2)
+        #func calls & rand starts
+        
+        curr_data_vpn_t1 = data_t1[vpn_t1]
+        curr_data_vpn_t2 = data_t2[vpn_t2]
+        # data import
+        stim_ID_t1 = curr_data_vpn_t1['stim_IDs'] #stimulus IDs of winning model
+        stim_ID_t2 = curr_data_vpn_t2['stim_IDs'] #stimulus IDs of winning model
+        
+        new_ID_t1 = curr_data_vpn_t1['new_IDs'] #trials where new ID is introduced 
+        new_ID_t2 = curr_data_vpn_t2['new_IDs'] #trials where new ID is introduced 
+        
+        numb_prev_presentations_t1 = curr_data_vpn_t1['n_prev_pres'] #number_of_prev_presentations
+        numb_prev_presentations_t2 = curr_data_vpn_t2['n_prev_pres'] #number_of_prev_presentations
+
+        #stim_IDs_perspective = curr_data_vpn[vpn+'_perspective'] #view dependent
+        #stim_IDs_perspective = curr_data_vpn[vpn+'_perspective'] #view dependent
+
+        VPN_output_t1 = curr_data_vpn_t1[vpn_t1+'_answer'] #VPN answers
+        VPN_output_t2  = curr_data_vpn_t2[vpn_t2+'_answer'] #VPN answers
+        verbose = False
+        
+        
+        def VIEW_INDIPENDENTxCONTEXT_t1_t2(data_M1_t1,data_M1_t2,params):
+           res1_t1 = VIEW_INDIPENDENTxCONTEXT(data_M1_t1,params)
+           res1_t2 = VIEW_INDIPENDENTxCONTEXT(data_M1_t2,params)                     
+           loss_t1 = res1_t1
+           loss_t2 = res1_t2
+           total_loss = loss_t1 + loss_t2
+           return total_loss
+       
+        
+       
+        ##### Model Optim
+                
+        ### VIEW_INDIPENDENTxCONTEXT
+        data_M1_t1 = [VPN_output_t1, new_ID_t1, numb_prev_presentations_t1, stim_ID_t1,verbose]
+        data_M1_t2 = [VPN_output_t2, new_ID_t2, numb_prev_presentations_t2, stim_ID_t2,verbose]
+        part_func_M1_t1_t2 = partial(VIEW_INDIPENDENTxCONTEXT_t1_t2,data_M1_t1,data_M1_t2) 
+        bounds_M1= [(0,1),(0,1),(.1,20),(0,2)]
+        res1_t1_t2 = optimize.fmin_l_bfgs_b(part_func_M1_t1_t2,
+                                      approx_grad = True,
+                                      bounds = bounds_M1, 
+                                      x0 = [x_0_bfgs for i in range(len(bounds_M1))],
+                                      epsilon=epsilon_param)
+
+        parameter_est['VIEW_INDIPENDENTxCONTEXT'][vpn_t1 + vpn_t2] = res1_t1_t2[0] 
+        re_evidence_subj = np.array([(-1*i[1]) for i in [res1_t1_t2]])
+
+        
+
+
+        res_evidence[vpn_t1 + vpn_t2] = re_evidence_subj
+    return res_evidence
+
+def fit_data_CV(data, lbfgs_epsilon, verbose_tot):   
+    from model_functions_BFGS import VIEW_INDIPENDENTxCONTEXT,VIEW_DEPENDENT,VIEW_DEPENDENTxCONTEXT_DEPENDENT
+    from model_functions_BFGS import VIEW_INDEPENDENT, VIEW_INDEPENDENTxVIEW_DEPENDENT
+    from model_functions_BFGS import VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT
+    from model_functions_BFGS import VIEW_INDIPENDENTxCONTEXT_CV,VIEW_DEPENDENT_CV
+    from model_functions_BFGS import VIEW_DEPENDENTxCONTEXT_DEPENDENT_CV,VIEW_INDEPENDENT_CV
+    from model_functions_BFGS import VIEW_INDEPENDENTxVIEW_DEPENDENT_CV
+    from model_functions_BFGS import VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT_CV
+    #folder_path_data = r'C:\Users\de_hauk\PowerFolders\apps_tzakiris_rep\data\processed'
+    
+    
+    from tqdm import tqdm
+    import pandas as pd
+    import numpy as np
+    from functools import partial
+    from scipy import optimize,special
+    np.random.seed(1993)
+    ### Get data 
+    data = data
+    
+    #### get unique IDS
+    unique_id = list(data.keys())
+    sample_answer_clms = [i+'_answer' for i in unique_id]
+    sample_perspective_clms = [i+'_perspective' for i in unique_id]
+    
+    epsilon_param = lbfgs_epsilon
+    x_0_bfgs = 0.5
+    params_M1_name = ['alpha', 'sigma', 'beta', 'lamd_a'] 
+    params_M2_name = ['alpha', 'beta', 'lamd_a']
+    params_M3_name = ['alpha', 'sigma', 'beta', 'lamd_a']
+    params_M4_name = ['alpha', 'beta', 'lamd_a']
+    params_M5_name = ['alpha_ind', 'alpha_dep', 'beta', 'lamd_a_ind', 'lamd_a_dep']
+    params_M6_name = ['alpha_ind', 'alpha_dep', 'sigma', 'beta', 'lamd_a_ind', 'lamd_a_dep']
+
+    models_names = ['VIEW_INDIPENDENTxCONTEXT',
+                    'VIEW_DEPENDENT',
+                    'VIEW_DEPENDENTxCONTEXT_DEPENDENT',
+                    'VIEW_INDEPENDENT',
+                    'VIEW_INDEPENDENTxVIEW_DEPENDENT',
+                    'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT']
+    
+    parameter_est = {'VIEW_INDIPENDENTxCONTEXT': pd.DataFrame(index=params_M1_name),
+                    'VIEW_DEPENDENT': pd.DataFrame(index=params_M2_name),
+                    'VIEW_DEPENDENTxCONTEXT_DEPENDENT': pd.DataFrame(index=params_M3_name),
+                    'VIEW_INDEPENDENT': pd.DataFrame(index=params_M4_name),
+                    'VIEW_INDEPENDENTxVIEW_DEPENDENT': pd.DataFrame(index=params_M5_name),
+                    'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT': pd.DataFrame(index=params_M6_name)
+                        }
+                    
+    data_verbose_debug = {}
+    res_evidence = pd.DataFrame(index=models_names)
+    trialwise_data = {}
+    bf_log_group = pd.DataFrame()
+    
+
+    total_results = {}
+    
+    
+    for vpn in unique_id:
+        print(vpn)
+        #func calls & rand starts
+        vpn_result = {}
+        curr_data_vpn = data[vpn]
+        # for trial in trial
+        cv_score_view_ind_cont = []
+        cv_score_view_dep = []
+        cv_score_view_dep_cont=[]
+        cv_score_view_ind = []
+        cv_score_view_ind_dep = []
+        cv_score_view_ind_dep_cont = []
+        
+        for indx in tqdm(range(curr_data_vpn.shape[0])):
+                
+            # holdout-data
+            holdout_data = curr_data_vpn.copy().loc[indx]
+            action = holdout_data[vpn+'_answer']
+            # testing data
+            test_data = curr_data_vpn.copy().drop(axis=0,index = indx)
+            
+            # data import
+            stim_IDs = test_data['stim_IDs'] #stimulus IDs of winning model 
+            new_ID = test_data['new_IDs'] #trials where new ID is introduced 
+            numb_prev_presentations = test_data['n_prev_pres'] #number_of_prev_presentations
+            stim_IDs_perspective = test_data[vpn+'_perspective'] #view dependent
+            VPN_output = test_data[vpn+'_answer'] #VPN answers
+            verbose = False
+            
+            ##### Model Optim
+            
+############################################################################             
+            i=vpn
+            #print('VIEW_INDIPENDENTxCONTEXT')
+            data_M1 = [VPN_output, new_ID, numb_prev_presentations, stim_IDs,verbose]
+    
+            bounds_M1 = [(0,1),(0,1),(.1,20),(0,2)]
+            
+            part_func_M1 = partial(VIEW_INDIPENDENTxCONTEXT,data_M1) 
+            res1 = optimize.fmin_l_bfgs_b(part_func_M1,
+                                          approx_grad = True,
+                                          bounds = bounds_M1, 
+                                          x0 = [x_0_bfgs for i in range(len(bounds_M1))],
+                                          epsilon=epsilon_param)
+            # parameter_est['VIEW_INDIPENDENTxCONTEXT'][i] = res1[0]
+            
+            # parameter_est['VIEW_INDIPENDENTxCONTEXT'] = res1[0]
+            data_M1[-1] = True 
+            data_M1_debug = data_M1.copy()
+            params_m_1 = res1[0]
+            m_1 = VIEW_INDIPENDENTxCONTEXT(data_M1_debug, params_m_1)
+            
+            init_V_m_1 = 0
+            init_C_m_1 = 0
+            if indx == 0:
+                init_V_m_1 += m_1[1]['init_val']['init_v']
+                init_C_m_1 = 0
+            else:
+                data_cv_score = m_1[1]['data_store_1'].loc[indx-1]
+                init_V_m_1 += data_cv_score['history_V']
+                init_C_m_1 += data_cv_score['history_C']
+    
+            #(params,old_vfam,old_cfam,action)
+            cv_trial_indeXcontext = VIEW_INDIPENDENTxCONTEXT_CV(params_m_1,init_V_m_1,init_C_m_1,action)
+            
+            
+############################################################################            
+            #print('VIEW_DEPENDENT')
+            
+            #data = [VPN_output, new_ID, stim_IDs, stim_IDs_perspective, verbose]    
+            data_M2 = [VPN_output, new_ID, stim_IDs, stim_IDs_perspective, verbose]
+            
+            data_M2_debug = data_M2.copy()
+            data_M2_debug[-1] = True 
+            bounds_M2 = [(0,1),(.1,20),(0,2)]
+            
+            part_func_M2 = partial(VIEW_DEPENDENT,data_M2) 
+            res2 = optimize.fmin_l_bfgs_b(part_func_M2,
+                                          approx_grad = True,
+                                          bounds = bounds_M2, 
+                                          x0 = [x_0_bfgs for i in range(len(bounds_M2))],
+                                          epsilon=epsilon_param)
+            params_m_2 = res2[0]
+            parameter_est['VIEW_DEPENDENT'][i] = res2[0]
+            #(params, old_fam, action)
+            
+            m_2 = VIEW_DEPENDENT(data_M2_debug, params_m_2)
+
+            init_V_m_2 = 0
+            if indx == 0:
+                init_V_m_2 += m_2[1]['init_val']
+
+            else:
+                data_cv_score = m_2[1]['history_V_cv'][indx-1]
+                init_V_m_2 += data_cv_score
+
+            cv_trial_dep = VIEW_DEPENDENT_CV(params_m_2,init_V_m_2,action)
+
+############################################################################## 
+
+            #print('VIEW_DEPENDENTxCONTEXT_DEPENDENT')
+    
+            #data = [VPN_output, new_ID, stim_IDs, stim_IDs_perspective, verbose]    
+            
+            data_M3 = [VPN_output, new_ID, stim_IDs, stim_IDs_perspective, verbose]
+            bounds_M3 = [(0,1),(0,1),(.1,20),(0,2)]
+        
+            part_func_M3 = partial(VIEW_DEPENDENTxCONTEXT_DEPENDENT,data_M3) 
+            res3 = optimize.fmin_l_bfgs_b(part_func_M3,
+                                          approx_grad = True,
+                                          bounds = bounds_M3, 
+                                          x0 = [x_0_bfgs for i in range(len(bounds_M3))],
+                                          epsilon=epsilon_param)
+            parameter_est['VIEW_DEPENDENTxCONTEXT_DEPENDENT'][i] = res3[0]
+
+
+            data_M3_debug = data_M3.copy()
+            data_M3_debug[-1] = True 
+            params_m_3 = res3[0]
+            m_3 = VIEW_DEPENDENTxCONTEXT_DEPENDENT(data_M3_debug, params_m_3)
+            
+            init_C_m_3 = 0
+            init_V_m_3 = 0
+            if indx == 0:
+                init_V_m_3 += m_3[1]['suppl']
+
+            else:
+                try:
+                    init_C_m_3 = m_3[1]['history_V_dep'][indx-1]
+                    init_V_m_3 = m_3[1]['history_C'][indx-1]
+                except:
+                    print('len', len(m_3[1]['history_V_dep']),
+                          'data',m_3[1]['history_V_dep'],
+                          'indx',indx)
+                    return total_results
+
+            #(params, old_Vfam_dep, old_c, action)
+            cv_trial_dep_cont = VIEW_DEPENDENTxCONTEXT_DEPENDENT_CV(params_m_3,
+                                                               init_V_m_3,
+                                                               init_C_m_3,
+                                                               action)
+##############################################################################
+
+
+            #print('VIEW_INDEPENDENT')
+    
+            #data = [VPN_output, new_ID, numb_prev_presentations, stim_IDs,verbose]
+        
+            data_M4 = [VPN_output, new_ID, numb_prev_presentations, stim_IDs,verbose]
+            bounds_M4 = [(0,1),(.1,20),(0,2)]
+        
+            part_func_M4 = partial(VIEW_INDEPENDENT,data_M4) 
+            res4 = optimize.fmin_l_bfgs_b(part_func_M4,
+                                          approx_grad = True,
+                                          bounds = bounds_M4, 
+                                          x0 = [x_0_bfgs for i in range(len(bounds_M4))],
+                                          epsilon=epsilon_param)
+            parameter_est['VIEW_INDEPENDENT'][i] = res4[0]
+            
+            
+                            
+            data_M4_debug = data_M4.copy()
+            data_M4_debug[-1] = True
+            params_m_4 = res4[0]
+            m_4 = VIEW_INDEPENDENT(data_M4_debug, params_m_4)
+
+            init_V_m_4 = 0
+            if indx == 0:
+                init_V_m_4 += m_4[1]['suppl']
+
+            else:
+                init_V_m_4 = m_4[1]['history_total'][indx-1]
+            cv_trial_ind = VIEW_INDEPENDENT_CV(params_m_4, init_V_m_4, action)
+  
+            
+##############################################################################
+            #print('VIEW_INDEPENDENTxVIEW_DEPENDENT')
+            
+            #data = [ VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose]
+        
+        
+            data_M5 = [VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose]
+            bounds_M5 = [(0,1),(0,1),(.1,20),(0,2),(0,2)]
+        
+            part_func_M5 = partial(VIEW_INDEPENDENTxVIEW_DEPENDENT,data_M5) 
+            res5 = optimize.fmin_l_bfgs_b(part_func_M5,
+                                          approx_grad = True,
+                                          bounds = bounds_M5, 
+                                          x0 = [x_0_bfgs for i in range(len(bounds_M5))],
+                                          epsilon=epsilon_param)
+            parameter_est['VIEW_INDEPENDENTxVIEW_DEPENDENT'][i] = res5[0]
+                
+            data_M5_debug = data_M5.copy()
+            data_M5_debug[-1] = True
+            params_m_5 = res5[0]
+            m_5 = VIEW_INDEPENDENTxVIEW_DEPENDENT(data_M5_debug, params_m_5)
+
+            init_V_ind = 0
+            init_V_dep = 0
+            if indx == 0:
+                #'suppl': (FP_rate_ind,FP_rate_dep)
+                init_V_ind += m_5[1]['suppl'][0]
+                init_V_dep += m_5[1]['suppl'][1]
+            else:
+                init_V_ind += m_5[1]['history_V_depend_L'][indx-1]
+                init_V_dep += m_5[1]['history_V_independ_L'][indx-1]
+            #VIEW_INDEPENDENTxVIEW_DEPENDENT_CV(params,old_fam_depend,old_fam_indipend, action)
+            cv_trial_ind_dep = VIEW_INDEPENDENTxVIEW_DEPENDENT_CV(params_m_5, init_V_dep,init_V_ind, action)
+  
+##############################################################################     
+            #print('VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT')
+            # params_M6_name = ['alpha_ind', 'alpha_dep', 'sigma', 'beta', 'lamd_a_ind', 'lamd_a_dep']
+            # #data = [VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose]
+        
+            data_M6 = [VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose]
+            bounds_M6 = [(0,1),(0,1),(0,1),(.1,20),(0,2),(0,2)]
+        
+            part_func_M6 = partial(VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT,data_M6) 
+            res6 = optimize.fmin_l_bfgs_b(part_func_M6,
+                                           approx_grad = True,
+                                           bounds = bounds_M6, 
+                                           x0 = [x_0_bfgs for i in range(len(bounds_M6))],
+                                           epsilon=epsilon_param)
+            
+                
+            data_M6_debug = data_M6.copy()
+            data_M6_debug[-1] = True
+            params_m_6 = res6[0]
+            m_6 = VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT(data_M6_debug, params_m_6)
+
+            init_V_ind = 0
+            init_V_dep = 0
+            init_C = 0
+            if indx == 0:
+                #'suppl': (FP_rate_ind,FP_rate_dep)
+                init_V_ind += m_6[1]['suppl'][0]
+                init_V_dep += m_6[1]['suppl'][1]
+            else:
+                init_C += m_6[1]['history_C'][indx-1]
+                init_V_ind += m_6[1]['history_V_depend_L'][indx-1]
+                init_V_dep += m_6[1]['history_V_independ_L'][indx-1]
+            #VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT_CV(params,old_fam_depend,old_fam_indipend,old_c, action)            
+            cv_trial_ind_dep_cont = VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT_CV(params_m_6, init_V_dep,init_V_ind,init_C, action)
+            
+            parameter_est['VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT'][i] = res6[0]
+
+##############################################################################        
+            
+            cv_score_view_ind_cont.append(cv_trial_indeXcontext)
+            cv_score_view_dep.append(cv_trial_dep)
+            cv_score_view_dep_cont.append(cv_trial_dep_cont)
+            cv_score_view_ind.append(cv_trial_ind)
+            cv_score_view_ind_dep.append(cv_trial_ind_dep)
+            cv_score_view_ind_dep_cont.append(cv_trial_ind_dep_cont)
+        df_index = ['VIEW_INDIPENDENTxCONTEXT',
+                    'VIEW_DEPENDENT',
+                    'VIEW_DEPENDENTxCONTEXT_DEPENDENT',
+                    'VIEW_INDEPENDENT']
+        df_data = [np.sum(cv_score_view_ind_cont),
+                   np.sum(cv_score_view_dep),
+                   np.sum(cv_score_view_dep_cont),
+                   np.sum(cv_score_view_ind),
+                   np.sum(cv_score_view_ind_dep),
+                   np.sum(cv_score_view_ind_dep_cont)]
+        cv_trial = pd.DataFrame(data = df_data, index=df_index)
+        #cv_trial.loc[0],cv_trial.loc[1] = np.sum(np.log(cv_score_view_ind_cont)), np.sum(np.log(cv_score_view_dep))
+        total_results[vpn] = cv_trial
+
+    return total_results
+
+
+########### Model Selection Funcs
+   
+def model_selection_AT():
+    import pandas as pd
+    import numpy as np
+    from scipy import special
+    ########## Data Transcribed from paper
+    
+    ##### Model_selection
+    # Formulas from: 
+    #   Glover, S., Dixon, P. 
+    #   Likelihood ratios: A simple and flexible statistic for empirical psychologists. 
+    #   Psychonomic Bulletin & Review 11, 791–806 (2004). 
+    #   https://doi.org/10.3758/BF03196706
+    
+    ll_raw = {'View-dependent': [-1590,3],
+              'View-dependent_context-dependent': [-1510,4],
+              'View-INdependent': [-1480,3],
+              'View-independent_context-dependent': [-1425,4],
+              'View-independent_View-dependent': [-1475,5],
+              'View-independent_View-dependent_context-dependent': [-1430,6],
+              }
+    ll_dat = pd.DataFrame.from_dict(data=ll_raw)
+    ll_dat['indx']=['ll','n_param']
+    ll_dat.set_index(keys='indx',inplace=True)
+    
+    model_win = 'View-independent_context-dependent'
+    model_cntrl = [i for i in ll_dat if i != model_win]
+    model_all = [i for i in ll_dat]
+    
+    ll_fin = pd.DataFrame(index = ['LR','LR_corr'])
+    n_size = 16
+    
+    
+    for i in model_cntrl:
+        # Get Log-Likelihoods
+        cntrl_ll = ll_dat[i][0]
+        win_ll = ll_dat[model_win][0]
+        
+        # Get n_params
+        win_nparam = ll_dat[model_win][1]
+        cntrl_nparam = ll_dat[i][1]
+        
+
+    
+        # uncorr LR
+        lr_var = -2*(cntrl_ll-win_ll)
+        # corr LL -> Glover & Dixon, 2004
+        lr_corr = lr_var*((np.exp((cntrl_nparam-win_nparam)))**(np.log(n_size)/2))
+        
+        # POSITIVE VALUES FAVOR WINNING MODEL
+        ll_fin[i] = [lr_var]+[lr_corr]
+    
+    # Compare Multiple Models, lambda_mult     
+    lmbda_mult = -2*(special.logsumexp(np.array(ll_dat.T['ll'])-ll_dat[model_win][0]))
+    
+    #transpose 
+    
+    
+    #get BIC
+    bic = []
+    for i in model_all:
+        raw_ll = ll_dat[i][0]
+        nparam = ll_dat[i][1]
+        bic_raw = (nparam*np.log(n_size))-(2*raw_ll)
+        bic.append(bic_raw)
+    
+    ll_dat = ll_dat.T
+    ll_dat['BIC'] = bic
+    return {'AT_model_selection_results_nparams': ll_dat,
+            'lambda_mult_model_selection':lmbda_mult,
+            'LR_fin': ll_fin}   
 
 def bayes_RFX_cond(fit_data_sample_T1,fit_data_sample_T2):
     import matlab.engine
@@ -805,30 +1269,6 @@ def bayes_RFX_cond(fit_data_sample_T1,fit_data_sample_T2):
     # exceedance probability of no larger difference in models across conditions
     #ex_prob = 1-float(non_exceedence_prob)
     return ('non_exceedence_prob',non_exceedence_prob)
-
-
-def reformat_data_within_T(data_2_sample):
-    ref_dat_raw = data_2_sample['raw_data']
-    unq_ids = data_2_sample['unique_ID']
-    
-    
-    data_dict_total = {}
-    data_dict_t1 = {}
-    data_dict_t2 = {}
-    for ids in unq_ids:
-        curr_df_raw = ref_dat_raw[[i for i in ref_dat_raw if ids in i]].copy()
-        curr_df_raw['stim_IDs'] = list(data_2_sample['stat_ground-truth']['stim_IDs'])
-        curr_df_raw['new_IDs'] = list(data_2_sample['stat_ground-truth']['new_IDs'])
-        curr_df_raw['n_prev_pres'] = list(data_2_sample['stat_ground-truth']['number_of_prev_presentations_raw '])
-        
-        curr_df = curr_df_raw.loc[curr_df_raw[ids+'_answer'].isna() == False].copy()
-        curr_df_1 = curr_df.reset_index(drop=True, inplace=False)
-        data_dict_total[ids] = curr_df_1
-        if 'A' in ids:
-            data_dict_t1[ids] = curr_df_1
-        elif 'B' in ids:
-            data_dict_t2[ids] = curr_df_1
-    return ('data_dict_t1',data_dict_t1,'data_dict_t2',data_dict_t2)
 
 def orig_procedure(fit_data_sample_T1, fit_data_sample_T2):
     import pingouin as pg
@@ -1168,424 +1608,6 @@ def fit_data_NUTS(data):
     # elif verbose_tot==False:
     #     return results_1
     return chain
-
-
-
-def data_fit_t1_t2_comb(data_t1,data_t2, lbfgs_epsilon):
-    from model_functions_BFGS import VIEW_INDIPENDENTxCONTEXT
-    from tqdm import tqdm
-    import pandas as pd
-    import numpy as np
-    from functools import partial
-    from scipy import optimize,special
-    np.random.seed(1993)
-
-    #### get unique IDS
-    unique_id_t1 = list(data_t1.keys())
-    unique_id_t2 = list(data_t2.keys())
-    
-    sample_answer_clms_t1 = [i+'_answer' for i in unique_id_t1]
-    sample_answer_clms_t2 = [i+'_answer' for i in unique_id_t2]
-    
-    sample_perspective_clms = [i+'_perspective' for i in unique_id_t1]
-    sample_perspective_clms = [i+'_perspective' for i in unique_id_t2]
-    
-    epsilon_param = lbfgs_epsilon
-    x_0_bfgs = 0.5
-    params_M1_name = ['alpha', 'sigma', 'beta', 'lamd_a']     
-    models_names = ['VIEW_INDIPENDENTxCONTEXT']
-    
-    parameter_est = {'VIEW_INDIPENDENTxCONTEXT': pd.DataFrame(index=params_M1_name)}                    
-    
-    data_verbose_debug = {}
-    res_evidence = pd.DataFrame(index=models_names)
-    trialwise_data = {}
-    bf_log_group = pd.DataFrame()
-    
-    for vpn_t1,vpn_t2 in zip(unique_id_t1,unique_id_t2):
-        print(vpn_t1,vpn_t2)
-        #func calls & rand starts
-        
-        curr_data_vpn_t1 = data_t1[vpn_t1]
-        curr_data_vpn_t2 = data_t2[vpn_t2]
-        # data import
-        stim_ID_t1 = curr_data_vpn_t1['stim_IDs'] #stimulus IDs of winning model
-        stim_ID_t2 = curr_data_vpn_t2['stim_IDs'] #stimulus IDs of winning model
-        
-        new_ID_t1 = curr_data_vpn_t1['new_IDs'] #trials where new ID is introduced 
-        new_ID_t2 = curr_data_vpn_t2['new_IDs'] #trials where new ID is introduced 
-        
-        numb_prev_presentations_t1 = curr_data_vpn_t1['n_prev_pres'] #number_of_prev_presentations
-        numb_prev_presentations_t2 = curr_data_vpn_t2['n_prev_pres'] #number_of_prev_presentations
-
-        #stim_IDs_perspective = curr_data_vpn[vpn+'_perspective'] #view dependent
-        #stim_IDs_perspective = curr_data_vpn[vpn+'_perspective'] #view dependent
-
-        VPN_output_t1 = curr_data_vpn_t1[vpn_t1+'_answer'] #VPN answers
-        VPN_output_t2  = curr_data_vpn_t2[vpn_t2+'_answer'] #VPN answers
-        verbose = False
-        
-        
-        def VIEW_INDIPENDENTxCONTEXT_t1_t2(data_M1_t1,data_M1_t2,params):
-           res1_t1 = VIEW_INDIPENDENTxCONTEXT(data_M1_t1,params)
-           res1_t2 = VIEW_INDIPENDENTxCONTEXT(data_M1_t2,params)                     
-           loss_t1 = res1_t1
-           loss_t2 = res1_t2
-           total_loss = loss_t1 + loss_t2
-           return total_loss
-       
-        
-       
-        ##### Model Optim
-                
-        ### VIEW_INDIPENDENTxCONTEXT
-        data_M1_t1 = [VPN_output_t1, new_ID_t1, numb_prev_presentations_t1, stim_ID_t1,verbose]
-        data_M1_t2 = [VPN_output_t2, new_ID_t2, numb_prev_presentations_t2, stim_ID_t2,verbose]
-        part_func_M1_t1_t2 = partial(VIEW_INDIPENDENTxCONTEXT_t1_t2,data_M1_t1,data_M1_t2) 
-        bounds_M1= [(0,1),(0,1),(.1,20),(0,2)]
-        res1_t1_t2 = optimize.fmin_l_bfgs_b(part_func_M1_t1_t2,
-                                      approx_grad = True,
-                                      bounds = bounds_M1, 
-                                      x0 = [x_0_bfgs for i in range(len(bounds_M1))],
-                                      epsilon=epsilon_param)
-
-        parameter_est['VIEW_INDIPENDENTxCONTEXT'][vpn_t1 + vpn_t2] = res1_t1_t2[0] 
-        re_evidence_subj = np.array([(-1*i[1]) for i in [res1_t1_t2]])
-
-        
-
-
-        res_evidence[vpn_t1 + vpn_t2] = re_evidence_subj
-    return res_evidence
-
-
-def fit_data_CV(data, lbfgs_epsilon, verbose_tot):   
-    from model_functions_BFGS import VIEW_INDIPENDENTxCONTEXT,VIEW_DEPENDENT,VIEW_DEPENDENTxCONTEXT_DEPENDENT
-    from model_functions_BFGS import VIEW_INDEPENDENT, VIEW_INDEPENDENTxVIEW_DEPENDENT
-    from model_functions_BFGS import VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT
-    from model_functions_BFGS import VIEW_INDIPENDENTxCONTEXT_CV,VIEW_DEPENDENT_CV
-    from model_functions_BFGS import VIEW_DEPENDENTxCONTEXT_DEPENDENT_CV,VIEW_INDEPENDENT_CV
-    from model_functions_BFGS import VIEW_INDEPENDENTxVIEW_DEPENDENT_CV
-    from model_functions_BFGS import VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT_CV
-    #folder_path_data = r'C:\Users\de_hauk\PowerFolders\apps_tzakiris_rep\data\processed'
-    
-    
-    from tqdm import tqdm
-    import pandas as pd
-    import numpy as np
-    from functools import partial
-    from scipy import optimize,special
-    np.random.seed(1993)
-    ### Get data 
-    data = data
-    
-    #### get unique IDS
-    unique_id = list(data.keys())
-    sample_answer_clms = [i+'_answer' for i in unique_id]
-    sample_perspective_clms = [i+'_perspective' for i in unique_id]
-    
-    epsilon_param = lbfgs_epsilon
-    x_0_bfgs = 0.5
-    params_M1_name = ['alpha', 'sigma', 'beta', 'lamd_a'] 
-    params_M2_name = ['alpha', 'beta', 'lamd_a']
-    params_M3_name = ['alpha', 'sigma', 'beta', 'lamd_a']
-    params_M4_name = ['alpha', 'beta', 'lamd_a']
-    params_M5_name = ['alpha_ind', 'alpha_dep', 'beta', 'lamd_a_ind', 'lamd_a_dep']
-    params_M6_name = ['alpha_ind', 'alpha_dep', 'sigma', 'beta', 'lamd_a_ind', 'lamd_a_dep']
-
-    models_names = ['VIEW_INDIPENDENTxCONTEXT',
-                    'VIEW_DEPENDENT',
-                    'VIEW_DEPENDENTxCONTEXT_DEPENDENT',
-                    'VIEW_INDEPENDENT',
-                    'VIEW_INDEPENDENTxVIEW_DEPENDENT',
-                    'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT']
-    
-    parameter_est = {'VIEW_INDIPENDENTxCONTEXT': pd.DataFrame(index=params_M1_name),
-                    'VIEW_DEPENDENT': pd.DataFrame(index=params_M2_name),
-                    'VIEW_DEPENDENTxCONTEXT_DEPENDENT': pd.DataFrame(index=params_M3_name),
-                    'VIEW_INDEPENDENT': pd.DataFrame(index=params_M4_name),
-                    'VIEW_INDEPENDENTxVIEW_DEPENDENT': pd.DataFrame(index=params_M5_name),
-                    'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT': pd.DataFrame(index=params_M6_name)
-                        }
-                    
-    data_verbose_debug = {}
-    res_evidence = pd.DataFrame(index=models_names)
-    trialwise_data = {}
-    bf_log_group = pd.DataFrame()
-    
-
-    total_results = {}
-    
-    
-    for vpn in unique_id:
-        print(vpn)
-        #func calls & rand starts
-        vpn_result = {}
-        curr_data_vpn = data[vpn]
-        # for trial in trial
-        cv_score_view_ind_cont = []
-        cv_score_view_dep = []
-        cv_score_view_dep_cont=[]
-        cv_score_view_ind = []
-        cv_score_view_ind_dep = []
-        cv_score_view_ind_dep_cont = []
-        
-        for indx in tqdm(range(curr_data_vpn.shape[0])):
-                
-            # holdout-data
-            holdout_data = curr_data_vpn.copy().loc[indx]
-            action = holdout_data[vpn+'_answer']
-            # testing data
-            test_data = curr_data_vpn.copy().drop(axis=0,index = indx)
-            
-            # data import
-            stim_IDs = test_data['stim_IDs'] #stimulus IDs of winning model 
-            new_ID = test_data['new_IDs'] #trials where new ID is introduced 
-            numb_prev_presentations = test_data['n_prev_pres'] #number_of_prev_presentations
-            stim_IDs_perspective = test_data[vpn+'_perspective'] #view dependent
-            VPN_output = test_data[vpn+'_answer'] #VPN answers
-            verbose = False
-            
-            ##### Model Optim
-            
-############################################################################             
-            i=vpn
-            #print('VIEW_INDIPENDENTxCONTEXT')
-            data_M1 = [VPN_output, new_ID, numb_prev_presentations, stim_IDs,verbose]
-    
-            bounds_M1 = [(0,1),(0,1),(.1,20),(0,2)]
-            
-            part_func_M1 = partial(VIEW_INDIPENDENTxCONTEXT,data_M1) 
-            res1 = optimize.fmin_l_bfgs_b(part_func_M1,
-                                          approx_grad = True,
-                                          bounds = bounds_M1, 
-                                          x0 = [x_0_bfgs for i in range(len(bounds_M1))],
-                                          epsilon=epsilon_param)
-            # parameter_est['VIEW_INDIPENDENTxCONTEXT'][i] = res1[0]
-            
-            # parameter_est['VIEW_INDIPENDENTxCONTEXT'] = res1[0]
-            data_M1[-1] = True 
-            data_M1_debug = data_M1.copy()
-            params_m_1 = res1[0]
-            m_1 = VIEW_INDIPENDENTxCONTEXT(data_M1_debug, params_m_1)
-            
-            init_V_m_1 = 0
-            init_C_m_1 = 0
-            if indx == 0:
-                init_V_m_1 += m_1[1]['init_val']['init_v']
-                init_C_m_1 = 0
-            else:
-                data_cv_score = m_1[1]['data_store_1'].loc[indx-1]
-                init_V_m_1 += data_cv_score['history_V']
-                init_C_m_1 += data_cv_score['history_C']
-    
-            #(params,old_vfam,old_cfam,action)
-            cv_trial_indeXcontext = VIEW_INDIPENDENTxCONTEXT_CV(params_m_1,init_V_m_1,init_C_m_1,action)
-            
-            
-############################################################################            
-            #print('VIEW_DEPENDENT')
-            
-            #data = [VPN_output, new_ID, stim_IDs, stim_IDs_perspective, verbose]    
-            data_M2 = [VPN_output, new_ID, stim_IDs, stim_IDs_perspective, verbose]
-            
-            data_M2_debug = data_M2.copy()
-            data_M2_debug[-1] = True 
-            bounds_M2 = [(0,1),(.1,20),(0,2)]
-            
-            part_func_M2 = partial(VIEW_DEPENDENT,data_M2) 
-            res2 = optimize.fmin_l_bfgs_b(part_func_M2,
-                                          approx_grad = True,
-                                          bounds = bounds_M2, 
-                                          x0 = [x_0_bfgs for i in range(len(bounds_M2))],
-                                          epsilon=epsilon_param)
-            params_m_2 = res2[0]
-            parameter_est['VIEW_DEPENDENT'][i] = res2[0]
-            #(params, old_fam, action)
-            
-            m_2 = VIEW_DEPENDENT(data_M2_debug, params_m_2)
-
-            init_V_m_2 = 0
-            if indx == 0:
-                init_V_m_2 += m_2[1]['init_val']
-
-            else:
-                data_cv_score = m_2[1]['history_V_cv'][indx-1]
-                init_V_m_2 += data_cv_score
-
-            cv_trial_dep = VIEW_DEPENDENT_CV(params_m_2,init_V_m_2,action)
-
-############################################################################## 
-
-            #print('VIEW_DEPENDENTxCONTEXT_DEPENDENT')
-    
-            #data = [VPN_output, new_ID, stim_IDs, stim_IDs_perspective, verbose]    
-            
-            data_M3 = [VPN_output, new_ID, stim_IDs, stim_IDs_perspective, verbose]
-            bounds_M3 = [(0,1),(0,1),(.1,20),(0,2)]
-        
-            part_func_M3 = partial(VIEW_DEPENDENTxCONTEXT_DEPENDENT,data_M3) 
-            res3 = optimize.fmin_l_bfgs_b(part_func_M3,
-                                          approx_grad = True,
-                                          bounds = bounds_M3, 
-                                          x0 = [x_0_bfgs for i in range(len(bounds_M3))],
-                                          epsilon=epsilon_param)
-            parameter_est['VIEW_DEPENDENTxCONTEXT_DEPENDENT'][i] = res3[0]
-
-
-            data_M3_debug = data_M3.copy()
-            data_M3_debug[-1] = True 
-            params_m_3 = res3[0]
-            m_3 = VIEW_DEPENDENTxCONTEXT_DEPENDENT(data_M3_debug, params_m_3)
-            
-            init_C_m_3 = 0
-            init_V_m_3 = 0
-            if indx == 0:
-                init_V_m_3 += m_3[1]['suppl']
-
-            else:
-                try:
-                    init_C_m_3 = m_3[1]['history_V_dep'][indx-1]
-                    init_V_m_3 = m_3[1]['history_C'][indx-1]
-                except:
-                    print('len', len(m_3[1]['history_V_dep']),
-                          'data',m_3[1]['history_V_dep'],
-                          'indx',indx)
-                    return total_results
-
-            #(params, old_Vfam_dep, old_c, action)
-            cv_trial_dep_cont = VIEW_DEPENDENTxCONTEXT_DEPENDENT_CV(params_m_3,
-                                                               init_V_m_3,
-                                                               init_C_m_3,
-                                                               action)
-##############################################################################
-
-
-            #print('VIEW_INDEPENDENT')
-    
-            #data = [VPN_output, new_ID, numb_prev_presentations, stim_IDs,verbose]
-        
-            data_M4 = [VPN_output, new_ID, numb_prev_presentations, stim_IDs,verbose]
-            bounds_M4 = [(0,1),(.1,20),(0,2)]
-        
-            part_func_M4 = partial(VIEW_INDEPENDENT,data_M4) 
-            res4 = optimize.fmin_l_bfgs_b(part_func_M4,
-                                          approx_grad = True,
-                                          bounds = bounds_M4, 
-                                          x0 = [x_0_bfgs for i in range(len(bounds_M4))],
-                                          epsilon=epsilon_param)
-            parameter_est['VIEW_INDEPENDENT'][i] = res4[0]
-            
-            
-                            
-            data_M4_debug = data_M4.copy()
-            data_M4_debug[-1] = True
-            params_m_4 = res4[0]
-            m_4 = VIEW_INDEPENDENT(data_M4_debug, params_m_4)
-
-            init_V_m_4 = 0
-            if indx == 0:
-                init_V_m_4 += m_4[1]['suppl']
-
-            else:
-                init_V_m_4 = m_4[1]['history_total'][indx-1]
-            cv_trial_ind = VIEW_INDEPENDENT_CV(params_m_4, init_V_m_4, action)
-  
-            
-##############################################################################
-            #print('VIEW_INDEPENDENTxVIEW_DEPENDENT')
-            
-            #data = [ VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose]
-        
-        
-            data_M5 = [VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose]
-            bounds_M5 = [(0,1),(0,1),(.1,20),(0,2),(0,2)]
-        
-            part_func_M5 = partial(VIEW_INDEPENDENTxVIEW_DEPENDENT,data_M5) 
-            res5 = optimize.fmin_l_bfgs_b(part_func_M5,
-                                          approx_grad = True,
-                                          bounds = bounds_M5, 
-                                          x0 = [x_0_bfgs for i in range(len(bounds_M5))],
-                                          epsilon=epsilon_param)
-            parameter_est['VIEW_INDEPENDENTxVIEW_DEPENDENT'][i] = res5[0]
-                
-            data_M5_debug = data_M5.copy()
-            data_M5_debug[-1] = True
-            params_m_5 = res5[0]
-            m_5 = VIEW_INDEPENDENTxVIEW_DEPENDENT(data_M5_debug, params_m_5)
-
-            init_V_ind = 0
-            init_V_dep = 0
-            if indx == 0:
-                #'suppl': (FP_rate_ind,FP_rate_dep)
-                init_V_ind += m_5[1]['suppl'][0]
-                init_V_dep += m_5[1]['suppl'][1]
-            else:
-                init_V_ind += m_5[1]['history_V_depend_L'][indx-1]
-                init_V_dep += m_5[1]['history_V_independ_L'][indx-1]
-            #VIEW_INDEPENDENTxVIEW_DEPENDENT_CV(params,old_fam_depend,old_fam_indipend, action)
-            cv_trial_ind_dep = VIEW_INDEPENDENTxVIEW_DEPENDENT_CV(params_m_5, init_V_dep,init_V_ind, action)
-  
-##############################################################################     
-            #print('VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT')
-            # params_M6_name = ['alpha_ind', 'alpha_dep', 'sigma', 'beta', 'lamd_a_ind', 'lamd_a_dep']
-            # #data = [VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose]
-        
-            data_M6 = [VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose]
-            bounds_M6 = [(0,1),(0,1),(0,1),(.1,20),(0,2),(0,2)]
-        
-            part_func_M6 = partial(VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT,data_M6) 
-            res6 = optimize.fmin_l_bfgs_b(part_func_M6,
-                                           approx_grad = True,
-                                           bounds = bounds_M6, 
-                                           x0 = [x_0_bfgs for i in range(len(bounds_M6))],
-                                           epsilon=epsilon_param)
-            
-                
-            data_M6_debug = data_M6.copy()
-            data_M6_debug[-1] = True
-            params_m_6 = res6[0]
-            m_6 = VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT(data_M6_debug, params_m_6)
-
-            init_V_ind = 0
-            init_V_dep = 0
-            init_C = 0
-            if indx == 0:
-                #'suppl': (FP_rate_ind,FP_rate_dep)
-                init_V_ind += m_6[1]['suppl'][0]
-                init_V_dep += m_6[1]['suppl'][1]
-            else:
-                init_C += m_6[1]['history_C'][indx-1]
-                init_V_ind += m_6[1]['history_V_depend_L'][indx-1]
-                init_V_dep += m_6[1]['history_V_independ_L'][indx-1]
-            #VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT_CV(params,old_fam_depend,old_fam_indipend,old_c, action)            
-            cv_trial_ind_dep_cont = VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT_CV(params_m_6, init_V_dep,init_V_ind,init_C, action)
-            
-            parameter_est['VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT'][i] = res6[0]
-
-##############################################################################        
-            
-            cv_score_view_ind_cont.append(cv_trial_indeXcontext)
-            cv_score_view_dep.append(cv_trial_dep)
-            cv_score_view_dep_cont.append(cv_trial_dep_cont)
-            cv_score_view_ind.append(cv_trial_ind)
-            cv_score_view_ind_dep.append(cv_trial_ind_dep)
-            cv_score_view_ind_dep_cont.append(cv_trial_ind_dep_cont)
-        df_index = ['VIEW_INDIPENDENTxCONTEXT',
-                    'VIEW_DEPENDENT',
-                    'VIEW_DEPENDENTxCONTEXT_DEPENDENT',
-                    'VIEW_INDEPENDENT']
-        df_data = [np.sum(cv_score_view_ind_cont),
-                   np.sum(cv_score_view_dep),
-                   np.sum(cv_score_view_dep_cont),
-                   np.sum(cv_score_view_ind),
-                   np.sum(cv_score_view_ind_dep),
-                   np.sum(cv_score_view_ind_dep_cont)]
-        cv_trial = pd.DataFrame(data = df_data, index=df_index)
-        #cv_trial.loc[0],cv_trial.loc[1] = np.sum(np.log(cv_score_view_ind_cont)), np.sum(np.log(cv_score_view_dep))
-        total_results[vpn] = cv_trial
-
-    return total_results
 
 
 

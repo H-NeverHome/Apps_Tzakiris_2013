@@ -12,6 +12,7 @@ from class_import import fit_data_noCV_irr_len_data,data_fit_t1_t2_comb
 #from class_import import fit_data_NUTS
 from class_import import bayes_RFX_cond,orig_procedure
 from class_import import reformat_data_within_T,bic,fit_data_CV
+from class_import import task_icc,pears_corr
 import matlab.engine
 import numpy as np
 import pandas as pd
@@ -31,7 +32,7 @@ data_2_sample = get_data_2(r'C:\Users\de_hauk\PowerFolders\apps_tzakiris_rep\dat
 data_1_sample_raw = data_old_sample(r'C:\Users\de_hauk\PowerFolders\apps_tzakiris_rep\A_T_Implementation\data_lab_jansen')
 
 
-##### Reformat data for within time format
+##### Reformat data for within-time format
 data_dict_t1 = reformat_data_within_T(data_2_sample)[1]
 data_dict_t2 = reformat_data_within_T(data_2_sample)[3]  
 
@@ -40,10 +41,12 @@ data_dict_t2 = reformat_data_within_T(data_2_sample)[3]
 # Get Behavioral Performance
 task_performance = get_behavioral_performance(data_2_sample)
 
-# intraclass corr
-icc_data = task_performance['behavioral_results'].copy()
-icc_data['time'] = [i[-1] for i in icc_data.index]
+# intraclass corr of % correct
+icc = task_icc(task_performance)
 
+# pearson corr of % correct
+
+corr = pears_corr(task_performance)
 
 ########### Comp. Modeling
 #get results from Apps&Tzakiris 2013
@@ -67,19 +70,19 @@ res_bic1 = bic(fit_data_sample_T1, fit_data_sample_T2)
 # Corrected LR ratio
 
 
-# ########### Within time model fitting
-# Bayes Between Cond RFX Model Select
+########### Within time model fitting
+#Bayes Between Cond RFX Model Select
 
-# non_ex_p = bayes_RFX_cond(fit_data_sample_T1,fit_data_sample_T2)
-# print('non_exceedence_prob=',float(non_ex_p[1]))
+non_ex_p = bayes_RFX_cond(fit_data_sample_T1,fit_data_sample_T2)
+#print('non_exceedence_prob=',float(non_ex_p[1]))
 
-# ########### TODO
+########### TODO
 
-# # ##### fit data sample N=3, T1 & T2 COMBINED // NO LOOCV // No imput
-# #fit_data_t1_t2 = data_fit_t1_t2_comb(data_dict_t1,data_dict_t2, 0.01)
+# ##### fit data sample N=3, T1 & T2 COMBINED // NO LOOCV // No imput
+fit_data_t1_t2 = data_fit_t1_t2_comb(data_dict_t1,data_dict_t2, 0.01)
 
-#fit_data_CV_df = fit_data_CV(data_dict_t1, 0.01, False)
-#fit_data_CV_df = fit_data_CV(data_dict_t2, 0.01, False)
+fit_data_CV_df = fit_data_CV(data_dict_t1, 0.01, False)
+fit_data_CV_df = fit_data_CV(data_dict_t2, 0.01, False)
 
 
 
