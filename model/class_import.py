@@ -1159,10 +1159,16 @@ def fit_data_CV(data, lbfgs_epsilon, verbose_tot):
             cv_score_view_ind.append(cv_trial_ind)
             cv_score_view_ind_dep.append(cv_trial_ind_dep)
             cv_score_view_ind_dep_cont.append(cv_trial_ind_dep_cont)
+        # df_index = ['VIEW_INDIPENDENTxCONTEXT',
+        #             'VIEW_DEPENDENT',
+        #             'VIEW_DEPENDENTxCONTEXT_DEPENDENT',
+        #             'VIEW_INDEPENDENT']
         df_index = ['VIEW_INDIPENDENTxCONTEXT',
                     'VIEW_DEPENDENT',
                     'VIEW_DEPENDENTxCONTEXT_DEPENDENT',
-                    'VIEW_INDEPENDENT']
+                    'VIEW_INDEPENDENT',
+                    'VIEW_INDEPENDENTxVIEW_DEPENDENT',
+                    'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT']
         df_data = [np.sum(cv_score_view_ind_cont),
                    np.sum(cv_score_view_dep),
                    np.sum(cv_score_view_dep_cont),
