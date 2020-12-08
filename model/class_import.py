@@ -754,7 +754,8 @@ def fit_data_noCV_irr_len_data(data, lbfgs_epsilon, verbose_tot):
                 'xxx':data_verbose_debug,
                 'used_data': data,
                 'subject_level_parameter-estimates':parameter_est,
-                'subject_level_trialwise_data_win_model':trialwise_data}
+                'subject_level_trialwise_data_win_model':trialwise_data,
+                'baseline_model': np.sum(np.log([0.5 for i in range(189)]))}
     if verbose_tot==True:
         return (results_1,restotal,data_verbose_debug)
     elif verbose_tot==False:
