@@ -12,7 +12,7 @@ from class_import import fit_data_noCV_irr_len_data,data_fit_t1_t2_comb
 #from class_import import fit_data_NUTS
 from class_import import bayes_RFX_cond,orig_procedure
 from class_import import reformat_data_within_T,bic,fit_data_CV
-from class_import import task_icc,pears_corr,corr_lr_func
+from class_import import task_rel,corr_lr_func
 import matlab.engine
 import numpy as np
 import pandas as pd
@@ -39,14 +39,11 @@ data_dict_t2 = reformat_data_within_T(data_2_sample)[3]
 ########## Task
 
 # Get Behavioral Performance
+
 task_performance = get_behavioral_performance(data_2_sample)
 
-# intraclass corr of % correct
-icc = task_icc(task_performance)
-
-# pearson corr of % correct
-
-corr = pears_corr(task_performance)
+# intraclass & corr of % correct
+task_reliability = task_rel(task_performance)
 
 ########### Comp. Modeling
 #get results from Apps&Tzakiris 2013
@@ -68,8 +65,10 @@ fit_data_t1_t2 = data_fit_t1_t2_comb(data_dict_t1,data_dict_t2, 0.01)
 res_tt_func = orig_procedure(fit_data_sample_T1, fit_data_sample_T2)
 
 # Model Select (BIC )
+from class_import import reformat_data_within_T,bic,fit_data_CV
 res_bic1 = bic(fit_data_sample_T1, fit_data_sample_T2)
-
+res_bic_A = res_bic1.T[[i for i in res_bic1.index if 'A' in i]].sum(axis = 1)
+res_bic_B = res_bic1.T[[i for i in res_bic1.index if 'B' in i]].sum(axis = 1)
 # Corrected LR ratio
 corr_lr_1 = corr_lr_func(fit_data_sample_T1)
 corr_lr_2 = corr_lr_func(fit_data_sample_T2)
