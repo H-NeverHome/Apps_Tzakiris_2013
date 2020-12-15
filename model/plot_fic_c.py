@@ -9,7 +9,6 @@ os.chdir(r'C:\Users\de_hauk\Documents\GitHub\Apps_Tzakiris_2013\model')
 from class_import import get_data,get_data_2,data_old_sample, fit_data_noCV
 from class_import import get_behavioral_performance,model_selection_AT
 from class_import import fit_data_noCV_irr_len_data,data_fit_t1_t2_comb
-#from class_import import fit_data_NUTS
 from class_import import bayes_RFX_cond,orig_procedure
 from class_import import reformat_data_within_T,bic,fit_data_CV
 from class_import import task_rel,corr_lr_func

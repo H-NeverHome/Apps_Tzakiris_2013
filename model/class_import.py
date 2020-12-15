@@ -1117,10 +1117,10 @@ def fit_data_CV(data, lbfgs_epsilon, verbose_tot):
                     'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT': pd.DataFrame(index=params_M6_name)
                         }
                     
-    data_verbose_debug = {}
-    res_evidence = pd.DataFrame(index=models_names)
-    trialwise_data = {}
-    bf_log_group = pd.DataFrame()
+    # data_verbose_debug = {}
+    # res_evidence = pd.DataFrame(index=models_names)
+    # trialwise_data = {}
+    # bf_log_group = pd.DataFrame()
     
 
     total_results = {}
@@ -1139,7 +1139,6 @@ def fit_data_CV(data, lbfgs_epsilon, verbose_tot):
         cv_score_view_ind = []
         cv_score_view_ind_dep = []
         cv_score_view_ind_dep_cont = []
-        
         for indx in tqdm(range(curr_data_vpn.shape[0])):
                 
             # holdout-data
@@ -1251,14 +1250,9 @@ def fit_data_CV(data, lbfgs_epsilon, verbose_tot):
                 init_V_m_3 += m_3[1]['suppl']
 
             else:
-                try:
-                    init_C_m_3 = m_3[1]['history_V_dep'][indx-1]
-                    init_V_m_3 = m_3[1]['history_C'][indx-1]
-                except:
-                    print('len', len(m_3[1]['history_V_dep']),
-                          'data',m_3[1]['history_V_dep'],
-                          'indx',indx)
-                    return total_results
+                init_C_m_3 = m_3[1]['history_V_dep'][indx-1]
+                init_V_m_3 = m_3[1]['history_C'][indx-1]
+
 
             cv_trial_dep_cont = VIEW_DEPENDENTxCONTEXT_DEPENDENT_CV(params_m_3,
                                                                init_V_m_3,
@@ -1351,8 +1345,12 @@ def fit_data_CV(data, lbfgs_epsilon, verbose_tot):
                 init_C += m_6[1]['history_C'][indx-1]
                 init_V_ind += m_6[1]['history_V_depend_L'][indx-1]
                 init_V_dep += m_6[1]['history_V_independ_L'][indx-1]
-
-            cv_trial_ind_dep_cont = VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT_CV(params_m_6, init_V_dep,init_V_ind,init_C, action)
+                                                                                
+            cv_trial_ind_dep_cont = VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT_CV(params_m_6,
+                                                                               init_V_dep,
+                                                                               init_V_ind,
+                                                                               init_C, 
+                                                                               action)
             
             parameter_est['VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT'][i] = res6[0]
 
@@ -1381,8 +1379,8 @@ def fit_data_CV(data, lbfgs_epsilon, verbose_tot):
         cv_trial = pd.DataFrame(data = df_data, index=df_index)
  
         total_results[vpn] = cv_trial
-
-    return total_results
+    debug = {'error?': (cv_score_view_ind_dep_cont,df_data,m_6)}
+    return (total_results, debug)
 
 
 ########### Model Selection Funcs
@@ -1542,7 +1540,9 @@ def bic(fit_data_sample_T1, fit_data_sample_T2):
         bic_list_B = bic(raw_LL_B,n_param,n_size_bic)
         res_bic[i] = bic_list_A + bic_list_B
         delta_bic = [x-y for x,y in zip(bic_list_A, bic_list_B)]
+        delta_bic_norm = [(x-y)/(x+y) for x,y in zip(bic_list_A, bic_list_B)]
         res_bic_D[i] = delta_bic
+        res_bic_D[i+ '_norm'] = delta_bic_norm
     return (res_bic, res_bic_D)
 
 def corr_lr_func(fit_data):

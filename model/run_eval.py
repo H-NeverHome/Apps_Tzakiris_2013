@@ -52,7 +52,7 @@ at_model = model_selection_AT()
 #For intepretation see https://www.nicebread.de/a-short-taxonomy-of-bayes-factors/
 
 # ##### fit data sample N=3, T1 & T2 SEPERATE // NO LOOCV // No imput
-
+from class_import import fit_data_noCV_irr_len_data
 fit_data_sample_T1 = fit_data_noCV_irr_len_data(data_dict_t1, 0.01, False)
 fit_data_sample_T2 = fit_data_noCV_irr_len_data(data_dict_t2, 0.01, False)
 
@@ -64,43 +64,51 @@ fit_data_t1_t2 = data_fit_t1_t2_comb(data_dict_t1,data_dict_t2, 0.01)
 # Model Select (t-test procedure, BIC dBIC)
 res_tt_func = orig_procedure(fit_data_sample_T1, fit_data_sample_T2)
 
-# Model Select (BIC )
-from class_import import reformat_data_within_T,bic,fit_data_CV
-res_bic1 = bic(fit_data_sample_T1, fit_data_sample_T2)
-res_bic_A = res_bic1.T[[i for i in res_bic1.index if 'A' in i]].sum(axis = 1)
-res_bic_B = res_bic1.T[[i for i in res_bic1.index if 'B' in i]].sum(axis = 1)
-# Corrected LR ratio
-corr_lr_1 = corr_lr_func(fit_data_sample_T1)
-corr_lr_2 = corr_lr_func(fit_data_sample_T2)
+# # Model Select (BIC )
+# from class_import import reformat_data_within_T,bic,fit_data_CV
+# res_bic1 = bic(fit_data_sample_T1, fit_data_sample_T2)
+# bic_model_n = [i for i in res_bic1[0]]
 
-# Total_corr LR
+# from scipy.special import logsumexp
+# dat_bivc = res_bic1[0].loc[[i for i in res_bic1[0].index if 'A' in i]].sum()
 
-#TODO
-#Really implement?
-
-########### Within time model fitting
-#Bayes Between Cond RFX Model Select
-
-non_ex_p = bayes_RFX_cond(fit_data_sample_T1,fit_data_sample_T2)
-#print('non_exceedence_prob=',float(non_ex_p[1]))1
-
-# TODO
-# Time-agnostic LR -> Function
+# mult = (dat_bivc[bic_model_n[0]] - logsumexp([dat_bivc[i].sum() for i in bic_model_n]))
 
 
-model_names = [i for i in fit_data_sample_T1['group_level_model_evidence'].index]
-subjects = [i[0] for i in fit_data_sample_T1['subject_level_model_evidence']]
+# res_bic_A = res_bic1.T[[i for i in res_bic1.index if 'A' in i]].sum(axis = 1)
+# res_bic_B = res_bic1.T[[i for i in res_bic1.index if 'B' in i]].sum(axis = 1)
+# # Corrected LR ratio
+# corr_lr_1 = corr_lr_func(fit_data_sample_T1)
+# corr_lr_2 = corr_lr_func(fit_data_sample_T2)
 
-time_agn = pd.DataFrame(index = ['time_agn','within_time'])
-for model in model_names:
-    mod_ev_combined = np.sum(fit_data_t1_t2.copy().T[model])
-    mod_ev_A = np.sum(fit_data_sample_T1['subject_level_model_evidence'].copy().T[model])
-    mod_ev_B = np.sum(fit_data_sample_T2['subject_level_model_evidence'].copy().T[model])
-    per_subj = []
-    per_subj1 = []
-    lr_agn = (mod_ev_A + mod_ev_B) - mod_ev_combined
-    lr_base = (mod_ev_A - mod_ev_B)
-    time_agn[model] = [lr_agn,lr_base]
+# # Total_corr LR
+
+# #TODO
+# #Really implement?
+
+# ########### Within time model fitting
+# #Bayes Between Cond RFX Model Select
+
+# non_ex_p = bayes_RFX_cond(fit_data_sample_T1,fit_data_sample_T2)
+# #print('non_exceedence_prob=',float(non_ex_p[1]))1
+
+# # TODO
+# # Time-agnostic LR -> Function
+
+
+# model_names = [i for i in fit_data_sample_T1['group_level_model_evidence'].index]
+# subjects = [i[0] for i in fit_data_sample_T1['subject_level_model_evidence']]
+
+# time_agn = pd.DataFrame(index = ['time_agn','within_time'])
+# for model in model_names:
+#     mod_ev_combined = np.sum(fit_data_t1_t2.copy().T[model])
+#     mod_ev_A = np.sum(fit_data_sample_T1['subject_level_model_evidence'].copy().T[model])
+#     mod_ev_B = np.sum(fit_data_sample_T2['subject_level_model_evidence'].copy().T[model])
+#     per_subj = []
+#     per_subj1 = []
+#     lr_agn = (mod_ev_A + mod_ev_B) - mod_ev_combined
+#     lr_base = (mod_ev_A - mod_ev_B)
+#     time_agn[model] = [lr_agn,lr_base]
 
 ########### works kinda
 
@@ -108,9 +116,9 @@ for model in model_names:
 
 #TODO
 #Check for bugs 
-
-# fit_data_CV_df = fit_data_CV(data_dict_t1, 0.01, False)
-# fit_data_CV_df = fit_data_CV(data_dict_t2, 0.01, False)
+from class_import import reformat_data_within_T,bic,fit_data_CV
+fit_data_CV_df_A = fit_data_CV(data_dict_t1, 0.01, False)
+fit_data_CV_df_B = fit_data_CV(data_dict_t2, 0.01, False)
 
 
 
