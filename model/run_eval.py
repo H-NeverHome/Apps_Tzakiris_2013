@@ -77,12 +77,21 @@ res_tt_func = orig_procedure(fit_data_sample_T1, fit_data_sample_T2)
 
 # res_bic_A = res_bic1.T[[i for i in res_bic1.index if 'A' in i]].sum(axis = 1)
 # res_bic_B = res_bic1.T[[i for i in res_bic1.index if 'B' in i]].sum(axis = 1)
+
 # # Corrected LR ratio
 # corr_lr_1 = corr_lr_func(fit_data_sample_T1)
 # corr_lr_2 = corr_lr_func(fit_data_sample_T2)
 
 # # Total_corr LR
+# time_ag_lr = pd.DataFrame()
+# models = [i for i in fit_data_sample_T1['group_level_model_evidence'].index]
 
+# for model in models:
+#     res_comb = fit_data_t1_t2.copy().sum(axis = 1)
+#     res_A = fit_data_sample_T1['group_level_model_evidence'][model]
+#     res_B = fit_data_sample_T2['group_level_model_evidence'][model]
+#     lr_agn = (res_A + res_B)/res_comb
+#     time_ag_lr[model] = [lr_agn]
 # #TODO
 # #Really implement?
 
@@ -120,6 +129,7 @@ from class_import import reformat_data_within_T,bic,fit_data_CV
 fit_data_CV_df_A = fit_data_CV(data_dict_t1, 0.01, False)
 fit_data_CV_df_B = fit_data_CV(data_dict_t2, 0.01, False)
 
+# fit_data_CV_comb = 
 
 
 ########## Data_Pilot sample
