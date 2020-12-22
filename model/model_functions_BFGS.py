@@ -110,7 +110,11 @@ def VIEW_INDIPENDENTxCONTEXT(data,params):
     vfam_PE_list = []
 
     ### inner loop through trials
-    for stim_ID,action,num_pres,trial in zip(stim_IDs,VPN_output,numb_prev_presentations,range(len(stim_IDs))):
+    #for stim_ID,action,num_pres,trial in zip(stim_IDs,VPN_output,numb_prev_presentations,range(len(stim_IDs))):
+    for trial in range(len(stim_IDs)):
+       
+        stim_ID,action = stim_IDs[trial],VPN_output[trial]
+        
         
         ### Get predicted V_fam, C from last trial
         old_Vfam = history_V[stim_ID][-1]
@@ -213,8 +217,10 @@ def VIEW_DEPENDENT(data, params):
     history_total = []
     history_V_tot = []
     ### inner loop through trials
-    for stim_ID,action,num_pres,trial in zip(stim_IDs_perspective,VPN_output,numb_presentations,range(len(stim_IDs))):
-       
+    #for stim_ID,action,num_pres,trial in zip(stim_IDs_perspective,VPN_output,numb_presentations,range(len(stim_IDs))):
+    for trial in range(len(stim_IDs)):
+  
+        stim_ID,action,num_pres = stim_IDs_perspective[trial], VPN_output[trial], numb_presentations[trial]
         ### Get all data for current trial
         old_fam = history_V_depend[stim_ID][-1] # previos stim familiarity
         
@@ -296,8 +302,10 @@ def VIEW_DEPENDENTxCONTEXT_DEPENDENT(data, params):
     
    
     ### inner loop through trials
-    for stim_ID,action,num_pres,trial in zip(stim_IDs_perspective,VPN_output,numb_presentations,range(len(stim_IDs))):
-       
+    #for stim_ID,action,num_pres,trial in zip(stim_IDs_perspective,VPN_output,numb_presentations,range(len(stim_IDs))):
+    for trial in range(len(stim_IDs)):
+        stim_ID,action,num_pres = stim_IDs_perspective[trial],VPN_output[trial],numb_presentations[trial]
+        
         ### Get all data for current trial
         old_Vfam = history_V_depend[stim_ID][-1] # previos stim familiarity
         old_c = history_C[-1]
@@ -387,8 +395,8 @@ def VIEW_INDEPENDENT(data, params):
     vfam_tot = []
     
     ### inner loop through trials
-    for stim_ID,action,num_pres,trial in zip(stim_IDs,VPN_output,numb_prev_presentations,range(len(stim_IDs))):
-        
+    for trial in range(len(stim_IDs)):
+        stim_ID,action,num_pres = stim_IDs[trial],VPN_output[trial],numb_prev_presentations[trial]
         ### Get predicted V_fam, C from last trial
         old_Vfam = history_V[stim_ID][-1]
         
@@ -467,8 +475,9 @@ def VIEW_INDEPENDENTxVIEW_DEPENDENT(data, params):
     history_V_depend_L = []
     history_V_independ_L = []
     ### inner loop through trials
-    for stim_ID_depend, stim_ID_indipend, action,num_pres_depend, num_pres_independ,trial in zip(stim_IDs_perspective,stim_IDs,VPN_output,numb_presentations,numb_prev_presentations,range(len(stim_IDs))):
-       
+    for trial in range(len(stim_IDs)):
+        stim_ID_depend, stim_ID_indipend = stim_IDs_perspective[trial],stim_IDs[trial]
+        action,num_pres_depend, num_pres_independ = VPN_output[trial],numb_presentations[trial],numb_prev_presentations[trial]
         ### Get all data for current trial
         old_fam_depend = history_V_depend[stim_ID_depend][-1] # previos stim familiarity
         old_fam_indipend = history_V_independ[stim_ID_indipend][-1]
@@ -570,8 +579,9 @@ def VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT(data, params):
     history_V_independ_L = []
    
     ### inner loop through trials
-    for stim_ID_depend, stim_ID_indipend, action,num_pres_depend, num_pres_independ,trial in zip(stim_IDs_perspective,stim_IDs,VPN_output,numb_pres_dep,numb_prev_presentations,range(len(stim_IDs))):
-       
+    for trial in range(len(stim_IDs)):
+        stim_ID_depend, stim_ID_indipend = stim_IDs_perspective[trial],stim_IDs[trial]
+        action = VPN_output[trial]
         ### Get all data for current trial
         
         old_fam_depend = history_V_depend[stim_ID_depend][-1] # previos stim familiarity
