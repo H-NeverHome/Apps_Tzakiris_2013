@@ -12,12 +12,11 @@ from class_import import fit_data_noCV_irr_len_data,data_fit_t1_t2_comb
 from class_import import bayes_RFX_cond,orig_procedure
 from class_import import reformat_data_within_T,bic,fit_data_CV
 from class_import import task_rel,corr_lr_func
-import matlab.engine
+import matplotlib.pyplot as plt  
 import numpy as np
 import pandas as pd
 import seaborn as sns
-import pingouin as pg
-from scipy import special 
+
 
 Fig_1_c_right = pd.read_csv(r'C:\Users\de_hauk\Documents\GitHub\Apps_Tzakiris_2013\datagen\Fig_1_c_right\Fig_1_c_right.csv')['0']
 Fig_1_c_left = pd.read_csv(r'C:\Users\de_hauk\Documents\GitHub\Apps_Tzakiris_2013\datagen\Fig_1_c_left\transcribed_raw_FIG_1_c_L.csv')['0']
@@ -31,9 +30,6 @@ folder_path_data = r'C:\Users\de_hauk\PowerFolders\apps_tzakiris_rep\data\proces
 
 data_2_sample = get_data_2(r'C:\Users\de_hauk\PowerFolders\apps_tzakiris_rep\data\data_new_12_08_2020\data_raw\csv',
                       r'C:\Users\de_hauk\PowerFolders\apps_tzakiris_rep\data\data_new_12_08_2020\data_list\stimuli_list.csv')
-                         
-import seaborn as sns 
-import matplotlib.pyplot as plt  
 
 sns.set_context("paper", font_scale = 2.5, rc={"grid.linewidth": 1.,
                                              'lines.linewidth': 3.,}) 

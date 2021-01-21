@@ -1762,7 +1762,7 @@ def orig_procedure(fit_data_sample_T1, fit_data_sample_T2):
     res_tt['p_val_BH_FDR'] = list(pval_A_FDR) + list(pval_B_FDR)
     return (res_tt,pval_A,pval_B)
 
-def bic(fit_data_sample_T1, fit_data_sample_T2):
+def bic_modelselect(fit_data_sample_T1, fit_data_sample_T2):
     import pingouin as pg
     import numpy as np
     import pandas as pd
@@ -1790,11 +1790,13 @@ def bic(fit_data_sample_T1, fit_data_sample_T2):
         bic_list_A = bic(raw_LL_A,n_param,n_size_bic)
         bic_list_B = bic(raw_LL_B,n_param,n_size_bic)
         res_bic[i] = bic_list_A + bic_list_B
-        delta_bic = [x-y for x,y in zip(bic_list_A, bic_list_B)]
-        delta_bic_norm = [(x-y)/(x+y) for x,y in zip(bic_list_A, bic_list_B)]
+        delta_bic = [bic_A - bic_B for bic_A,bic_B in zip(bic_list_A, bic_list_B)]
+        #delta_bic_norm = [(x-y)/(x+y) for bic_A,bic_B in zip(bic_list_A, bic_list_B)]
         res_bic_D[i] = delta_bic
-        res_bic_D[i+ '_norm'] = delta_bic_norm
-    return (res_bic, res_bic_D)
+        #res_bic_D[i+ '_norm'] = delta_bic_norm
+    return {'subject_wise_BIC' : res_bic,
+            'diff_BIC_(A-B)':res_bic_D}
+
 
 def corr_lr_func(fit_data):
     import pandas as pd
@@ -1827,7 +1829,8 @@ def corr_lr_func(fit_data):
 
 ########## Experimental Below
 
-def fit_data_CV_mult(dat):   
+def fit_data_CV_mult(VPN_dat):
+
     from model_functions_BFGS import VIEW_INDIPENDENTxCONTEXT,VIEW_DEPENDENT,VIEW_DEPENDENTxCONTEXT_DEPENDENT
     from model_functions_BFGS import VIEW_INDEPENDENT, VIEW_INDEPENDENTxVIEW_DEPENDENT
     from model_functions_BFGS import VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT
@@ -1835,46 +1838,18 @@ def fit_data_CV_mult(dat):
     from model_functions_BFGS import VIEW_DEPENDENTxCONTEXT_DEPENDENT_CV,VIEW_INDEPENDENT_CV
     from model_functions_BFGS import VIEW_INDEPENDENTxVIEW_DEPENDENT_CV
     from model_functions_BFGS import VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT_CV
-    #folder_path_data = r'C:\Users\de_hauk\PowerFolders\apps_tzakiris_rep\data\processed'
-    unique_id, data, lbfgs_epsilon, verbose_tot = dat
-    vpn = unique_id
-    from tqdm import tqdm
     import pandas as pd
     import numpy as np
     from functools import partial
-    from scipy import optimize,special
+    from scipy import optimize
     np.random.seed(1993)
 
-    
-    #### get unique IDS
-
-    # sample_answer_clms = vpn+'_answer'
-    # sample_perspective_clms = vpn+'_perspective'
+    unique_id, data, lbfgs_epsilon, verbose_tot = VPN_dat
+    vpn = unique_id
     
     epsilon_param = lbfgs_epsilon
     x_0_bfgs = 0.5
-    params_M1_name = ['alpha', 'sigma', 'beta', 'lamd_a'] 
-    params_M2_name = ['alpha', 'beta', 'lamd_a']
-    params_M3_name = ['alpha', 'sigma', 'beta', 'lamd_a']
-    params_M4_name = ['alpha', 'beta', 'lamd_a']
-    params_M5_name = ['alpha_ind', 'alpha_dep', 'beta', 'lamd_a_ind', 'lamd_a_dep']
-    params_M6_name = ['alpha_ind', 'alpha_dep', 'sigma', 'beta', 'lamd_a_ind', 'lamd_a_dep']
-
-    models_names = ['VIEW_INDIPENDENTxCONTEXT',
-                    'VIEW_DEPENDENT',
-                    'VIEW_DEPENDENTxCONTEXT_DEPENDENT',
-                    'VIEW_INDEPENDENT',
-                    'VIEW_INDEPENDENTxVIEW_DEPENDENT',
-                    'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT']
     
-    parameter_est = {'VIEW_INDIPENDENTxCONTEXT': pd.DataFrame(index=params_M1_name),
-                    'VIEW_DEPENDENT': pd.DataFrame(index=params_M2_name),
-                    'VIEW_DEPENDENTxCONTEXT_DEPENDENT': pd.DataFrame(index=params_M3_name),
-                    'VIEW_INDEPENDENT': pd.DataFrame(index=params_M4_name),
-                    'VIEW_INDEPENDENTxVIEW_DEPENDENT': pd.DataFrame(index=params_M5_name),
-                    'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT': pd.DataFrame(index=params_M6_name)
-                        }
-
     total_results = {}
     
     
@@ -1894,30 +1869,29 @@ def fit_data_CV_mult(dat):
     
     #### debug
     test_L = []
-    hold_L = []
-    
-    
-    
+    hold_L = []  
     
     for indx in range(trials_n):
         
         
         # holdout-data
         holdout_data = curr_data_vpn[indx,:]
-        
         action = holdout_data[2]
-        # testing data
+        
+        # training data
         train_data = np.delete(curr_data_vpn.copy(),indx,axis=0)
-        curr_index = indx-1
+        curr_index = indx
+        
         # data import
-        stim_IDs = train_data[:,3]   #stimulus IDs of winning model 
-        new_ID = train_data[:,4]      #trials where new ID is introduced 
-        numb_prev_presentations = train_data[:,5]    #number_of_prev_presentations
-        stim_IDs_perspective = train_data[:,0]   #view dependent
-        VPN_output = train_data[:,2]     #VPN answers
-        verbose = False
+        stim_IDs                = train_data[:,3].copy()   #stimulus IDs of winning model 
+        new_ID                  = train_data[:,4].copy()   #trials where new ID is introduced 
+        numb_prev_presentations = train_data[:,5].copy()   #number_of_prev_presentations
+        stim_IDs_perspective    = train_data[:,0].copy()   #view dependent
+        VPN_output              = train_data[:,2].copy()   #VPN answers
+        verbose                 = False
         
         ##### Model Optim
+        #data_raw.append()
         test_L.append(holdout_data)
         hold_L.append(train_data)
 ########################################## VIEW_INDIPENDENTxCONTEXT #####################################             
@@ -1931,13 +1905,7 @@ def fit_data_CV_mult(dat):
                                       approx_grad = True,
                                       bounds = bounds_M1, 
                                       x0 = [x_0_bfgs for i in range(len(bounds_M1))],
-                                      epsilon=epsilon_param)
-    # VPN_output = data[0].copy()
-    # new_ID = data[1]
-    # numb_prev_presentations = data[2]
-    # stim_IDs = data[3]
-    # verbose = data[4]
-    
+                                      epsilon=epsilon_param)   
     
         data_M1[-1] = True 
         data_M1_debug = data_M1.copy()
@@ -1952,6 +1920,8 @@ def fit_data_CV_mult(dat):
             data_cv_score = m_1[1]['data_store_1'].loc[curr_index]
             init_V_m_1 += data_cv_score['history_V']
             init_C_m_1 += data_cv_score['history_C']
+            # init_V_m_1 += list(m_1[1]['data_store_1']['history_V'])[curr_index]
+            # init_C_m_1 += list(m_1[1]['data_store_1']['history_C'])[curr_index]
 
 
         cv_trial_indeXcontext = VIEW_INDIPENDENTxCONTEXT_CV(params_m_1,
@@ -2147,11 +2117,11 @@ def fit_data_CV_mult(dat):
     cv_trial = pd.DataFrame(data = df_data, index=df_index)
  
     total_results[vpn] = cv_trial
-
+    total_results['suppl'] = (test_L,hold_L)
+    total_results['error'] = (cv_score_view_ind_cont,df_data,m_1)
+    total_results['VPN'] = curr_data_vpn
     return total_results
 
 # debug = {'error?': (cv_score_view_ind_dep_cont,df_data,m_6),
-#          'hold':holdout_data,
-#          'test':test_data,
-#          'suppl': (test_L,hold_L)}
+
 
