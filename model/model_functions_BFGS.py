@@ -162,7 +162,8 @@ def VIEW_INDIPENDENTxCONTEXT(data,params):
                       'log_like': model_evidence,
                       'data_store_1':data_store_1,
                       'history_total':history_total,
-                      'init_val':{'init_v': FP_rate,'init_c' : 0}}
+                      'init_val':{'init_v': FP_rate,'init_c' : 0},
+                      'history_V_dict':history_V}
         return (model_evidence,data_store)
    
 ##### CV
@@ -190,9 +191,9 @@ def VIEW_INDIPENDENTxCONTEXT_CV(params,old_vfam,old_cfam,action):
     #get answer prob
     p_yes,p_no = answer_prob(beta,totfam)
     if action == 1:
-        return np.log(p_yes)
+        return (np.log(p_yes),totfam)
     if action == 0:
-        return np.log(p_no)
+        return (np.log(p_no),totfam)
 
 
 ################################### Control Model: VIEW_DEPENDENT #############################################

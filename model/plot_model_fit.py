@@ -39,11 +39,11 @@ sns.barplot(data=data_merg_CV.T,
             ci = None,
             ax = ax[1])
 
-ax[1].set_xlim(-800,-225)
+ax[0].set_xlim(-800,-450)
 
 ax[0].set_title('Raw LL')
 
-ax[1].set_xlim(-800,-225)
+ax[1].set_xlim(-800,-450)
 ax[1].set_title('LL_LOOCV')
 plt.tight_layout()
 

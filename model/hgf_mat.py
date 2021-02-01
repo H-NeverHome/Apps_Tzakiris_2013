@@ -12,7 +12,7 @@ import pandas as pd
 import os
 os.chdir(r'C:\Users\de_hauk\Documents\GitHub\Apps_Tzakiris_2013\model')
 from class_import import get_data,get_data_2,data_old_sample, fit_data_noCV
-from class_import import reformat_data_within_T,bic,fit_data_CV
+from class_import import reformat_data_within_T,fit_data_CV
 
 data_2_sample = get_data_2(r'C:\Users\de_hauk\PowerFolders\apps_tzakiris_rep\data\data_new_12_08_2020\data_raw\csv',
                       r'C:\Users\de_hauk\PowerFolders\apps_tzakiris_rep\data\data_new_12_08_2020\data_list\stimuli_list.csv')
@@ -26,18 +26,21 @@ data_dict_t2 = reformat_data_within_T(data_2_sample)[3]
 # HGF
 
 
-inputs = np.array(data_dict_t1['1_A']['stim_IDs']).tolist()
+inputs = np.array(data_dict_t1['1_A']['stim_IDs']).astype(int).tolist()
 aaa = np.zeros([len(inputs)])
 aaa[::] = inputs
 inputs_fin = matlab.double(aaa.tolist())
 
 
-outputs = np.array(data_dict_t1['1_A']['1_A_answer']).tolist()
+outputs = np.array(data_dict_t1['1_A']['1_A_answer']).astype(int).tolist()
 bbb = np.zeros([len(outputs)])
 bbb[::] = outputs
 outputs_fin = matlab.double(bbb.tolist())
 
 est = eng.tapas_fitModel(outputs_fin, inputs_fin)
+
+print(est)
+
 
 res = pd.DataFrame()
 est_d = list(est['p_prc'])

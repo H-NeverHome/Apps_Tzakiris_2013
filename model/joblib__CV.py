@@ -56,7 +56,20 @@ for ids in ids_t1_t2_joblib:
 
 # data_cv = [i for i in loocv.split(x=data_job[0][1], y=data_job[0][1][:,2]) ]
 
+
+# import numpy as np
+# indx = 9  
+
+# curr_data_vpn = data_job[0][1]
     
+# # holdout-data
+# holdout_data = curr_data_vpn.copy()[indx,:]
+# action = curr_data_vpn.copy()[indx,:][2]
+
+# # training data
+# train_data = np.delete(curr_data_vpn.copy(),indx,axis=0)
+
+
 
 if __name__ == '__main__':   
     results123 = Parallel(n_jobs=8,verbose=50)(delayed(fit_data_CV_mult)(i) for i in data_job)    
@@ -77,3 +90,6 @@ for ids,data_res in zip(ids_t1_t2_joblib, results123):
 path = r'C:\Users\de_hauk\HESSENBOX\apps_tzakiris_rep\data\output'
 fin_res_A.to_csv(path + '/fit_data_sample_T1_CV.csv')
 fin_res_B.to_csv(path + '/fit_data_sample_T2_CV.csv')
+
+
+

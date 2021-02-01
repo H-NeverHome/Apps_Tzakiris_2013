@@ -8,6 +8,7 @@ Created on Wed Sep 16 09:45:32 2020
 ########### Fetch Data Funcs
 
 def get_data(path):
+    '''old & deprec'''
     import pandas as pd
     ### Get preprocessed and previously stored data 
     data = pd.read_csv(path + r'/final_proc_dat_labjansen.csv')
@@ -91,6 +92,7 @@ def get_data_2(path_raw_data, ground_truth_file):
             'unique_ID': unq_id}
 
 def data_old_sample(path):
+    '''old & deprec'''
     import pandas as pd
     import glob
     import numpy as np
@@ -818,7 +820,8 @@ def data_fit_t1_t2_comb(data_t1,data_t2, lbfgs_epsilon):
                     'VIEW_DEPENDENTxCONTEXT_DEPENDENT',
                     'VIEW_INDEPENDENT',
                     'VIEW_INDEPENDENTxVIEW_DEPENDENT',
-                    'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT']
+                    'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT',
+                    'random_choice']
     
     parameter_est = {'VIEW_INDIPENDENTxCONTEXT': pd.DataFrame(index=params_M1_name),
                     'VIEW_DEPENDENT': pd.DataFrame(index=params_M2_name),
@@ -1049,15 +1052,24 @@ def data_fit_t1_t2_comb(data_t1,data_t2, lbfgs_epsilon):
                                       x0 = [x_0_bfgs for i in range(len(bounds_M6))],
                                       epsilon=epsilon_param)
         
-#         parameter_est['VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT'][i] = res6[0]
+        #parameter_est['VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT'][i] = res6[0]
+
+# ####################  Random Choice #################### 
+        def rnf_choice(VPN_output_t1,VPN_output_t2):
+            n_trial_T1,n_trial_T2 = len(VPN_output_t1),len(VPN_output_t2)
+            loss_T1 = np.sum([np.log(0.5) for i in range(n_trial_T1)])
+            loss_T2 = np.sum([np.log(0.5) for i in range(n_trial_T2)])
+            total_loss = loss_T1+loss_T2
+            return total_loss
     
+        rnd_choice_t1_t2 = rnf_choice(VPN_output_t1,VPN_output_t2)
         res_total = [res1_t1_t2,
                      res2_t1_t2,
                      res3_t1_t2,
                      res4_t1_t2,
                      res5_t1_t2,
                      res6_t1_t2]
-        re_evidence_subj = np.array([(-1*i[1]) for i in res_total])
+        re_evidence_subj = np.array([(-1*i[1]) for i in res_total]+[rnd_choice_t1_t2])
 
         res_evidence[vpn_t1 + vpn_t2] = re_evidence_subj   
            
@@ -1768,9 +1780,9 @@ def bic_modelselect(fit_data_sample_T1, fit_data_sample_T2):
     import pandas as pd
     name_models_bic = [i for i in fit_data_sample_T1['subject_level_parameter-estimates']]
     n_params = pd.DataFrame()
-    for i in name_models_bic:
-        n_par = fit_data_sample_T1['subject_level_parameter-estimates'][i].shape[0]
-        n_params[i] = [n_par]
+    for model in name_models_bic:
+        n_par = fit_data_sample_T1['subject_level_parameter-estimates'][model].shape[0]
+        n_params[model] = [n_par]
     
     def bic(LL,n_param,n):
         bic = [int((n_param*np.log(n))-(2*i)) for i in LL]
@@ -1811,11 +1823,11 @@ def corr_lr_func(fit_data):
     res_lr = pd.DataFrame(index = ['lr','corr_lr','correction'])
     for model_LR in name_models_LR[1::]:
         model_ev_win = np.array(fit_data['group_level_model_evidence'][name_models_LR[0]])
-        model_ev_win_param = np.array(n_params[name_models_LR[0]])
+        model_ev_win_Nparam = np.array(n_params[name_models_LR[0]])
         model_ev_cntrl = np.array(fit_data['group_level_model_evidence'][model_LR])
-        model_ev_cntrl_param = np.array(n_params[model_LR])
+        model_ev_cntrl_Nparam = np.array(n_params[model_LR])
         lr_uncorr = model_ev_win-model_ev_cntrl
-        exp_modelparam = np.exp(model_ev_win_param-model_ev_cntrl_param)
+        exp_modelparam = np.exp(model_ev_win_Nparam-model_ev_cntrl_Nparam)
         correction = np.log(exp_modelparam**(np.log(n_subj)/2))
         corr_lr = lr_uncorr + correction
         res_list = [float(lr_uncorr),float(corr_lr),float(correction)]
@@ -1862,11 +1874,14 @@ def fit_data_CV_mult(VPN_dat):
     cv_score_view_ind = []
     cv_score_view_ind_dep = []
     cv_score_view_ind_dep_cont = []
+    cv_score_rnd = []
     
     # for trial in trial
+    ''' one trial needs to be subtracted from the data, 
+    since we are deleting one trial'''
     
     trials_n = len(curr_data_vpn)-1
-    
+
     #### debug
     test_L = []
     hold_L = []  
@@ -1875,11 +1890,12 @@ def fit_data_CV_mult(VPN_dat):
         
         
         # holdout-data
-        holdout_data = curr_data_vpn[indx,:]
-        action = holdout_data[2]
+        holdout_data = curr_data_vpn.copy()[indx,:]
+        action = curr_data_vpn.copy()[indx,:][2]
         
         # training data
         train_data = np.delete(curr_data_vpn.copy(),indx,axis=0)
+        #train_data = curr_data_vpn.copy()
         curr_index = indx
         
         # data import
@@ -1889,7 +1905,7 @@ def fit_data_CV_mult(VPN_dat):
         stim_IDs_perspective    = train_data[:,0].copy()   #view dependent
         VPN_output              = train_data[:,2].copy()   #VPN answers
         verbose                 = False
-        
+
         ##### Model Optim
         #data_raw.append()
         test_L.append(holdout_data)
@@ -1909,6 +1925,7 @@ def fit_data_CV_mult(VPN_dat):
     
         data_M1[-1] = True 
         data_M1_debug = data_M1.copy()
+        #data_M1_debug[0] = curr_data_vpn[:,2].copy() 
         params_m_1 = res1[0]
         m_1 = VIEW_INDIPENDENTxCONTEXT(data_M1_debug, params_m_1)
         
@@ -1917,13 +1934,11 @@ def fit_data_CV_mult(VPN_dat):
         if indx == 0:
             init_V_m_1 += m_1[1]['init_val']['init_v']
         else:
-            data_cv_score = m_1[1]['data_store_1'].loc[curr_index]
-            init_V_m_1 += data_cv_score['history_V']
-            init_C_m_1 += data_cv_score['history_C']
-            # init_V_m_1 += list(m_1[1]['data_store_1']['history_V'])[curr_index]
-            # init_C_m_1 += list(m_1[1]['data_store_1']['history_C'])[curr_index]
-
-
+            data_cv_score = m_1[1]['data_store_1'].loc[curr_index-1]
+            init_V_m_1 = data_cv_score['history_V']
+            init_C_m_1 = data_cv_score['history_C']
+        
+    
         cv_trial_indeXcontext = VIEW_INDIPENDENTxCONTEXT_CV(params_m_1,
                                                             init_V_m_1,
                                                             init_C_m_1,
@@ -2092,6 +2107,11 @@ def fit_data_CV_mult(VPN_dat):
         
         #parameter_est['VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT'][vpn] = res6[0]
 
+########################### rnd_choice ###################################################     
+        '''for every answer predicted model prob of =.5'''
+        ans_prob_rnd = np.log(.5)
+
+
 ##############################################################################        
         
         cv_score_view_ind_cont.append(cv_trial_indeXcontext)
@@ -2100,20 +2120,23 @@ def fit_data_CV_mult(VPN_dat):
         cv_score_view_ind.append(cv_trial_ind)
         cv_score_view_ind_dep.append(cv_trial_ind_dep)
         cv_score_view_ind_dep_cont.append(cv_trial_ind_dep_cont)
+        cv_score_rnd.append(ans_prob_rnd)
 
     df_index = ['VIEW_INDIPENDENTxCONTEXT',
                 'VIEW_DEPENDENT',
                 'VIEW_DEPENDENTxCONTEXT_DEPENDENT',
                 'VIEW_INDEPENDENT',
                 'VIEW_INDEPENDENTxVIEW_DEPENDENT',
-                'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT']
+                'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT',
+                'RANDOM_CHOICE']
     
     df_data = [np.sum(cv_score_view_ind_cont),
                np.sum(cv_score_view_dep),
                np.sum(cv_score_view_dep_cont),
                np.sum(cv_score_view_ind),
                np.sum(cv_score_view_ind_dep),
-               np.sum(cv_score_view_ind_dep_cont)]
+               np.sum(cv_score_view_ind_dep_cont),
+               np.sum(cv_score_rnd)]
     cv_trial = pd.DataFrame(data = df_data, index=df_index)
  
     total_results[vpn] = cv_trial
