@@ -71,19 +71,18 @@ def get_data_3(path_raw_data, ground_truth_file):
         check_L = len(np.unique(perspective)) == len(np.unique(view_dep_L))
             
 
-        data_ID['perf'] = answer_correct
-        data_ID['answer'] = answer_raw
-        data_ID['stim_IDs_VI'] = SAMPLE_fullinfo['stim_IDs']
-        data_ID['new_IDs'] = SAMPLE_fullinfo['new_IDs']
-        data_ID['stim_IDs_VD'] = view_dep_L
-        
+        data_ID['perf'] =           answer_correct
+        data_ID['answer'] =         answer_raw
+        data_ID['stim_IDs_VI'] =    SAMPLE_fullinfo['stim_IDs']
+        data_ID['new_IDs'] =        SAMPLE_fullinfo['new_IDs']
+        data_ID['stim_IDs_VD'] =    view_dep_L
         data_id_fin = data_ID.copy().loc[data_ID['answer'].isna()==False].reset_index(drop=True)
         
         n_prev_VI = []
         n_prev_VD = []
         unq_stim_ID_VI = {}
         unq_stim_ID_VD = {}
-        for stim_VI,stim_VD in zip(data_id_fin['stim_IDs_VI'], data_id_fin['stim_IDs_VD']):
+        for stim_VI,stim_VD in zip(data_id_fin['stim_IDs_VI'], data_id_fin['stim_IDs_VI']):
     
             key_VI, key_VD = str(stim_VI),str(stim_VD)
             
@@ -95,7 +94,7 @@ def get_data_3(path_raw_data, ground_truth_file):
             elif key_VI in curr_keys_VI:
                 unq_stim_ID_VI[key_VI] = unq_stim_ID_VI[key_VI]+1
             
-            n_prev_VI.append(str(unq_stim_ID_VI[key_VI]))
+            n_prev_VI.append(int(unq_stim_ID_VI[key_VI]))
             
             ## count VD_Stims
             curr_keys_VD = [i for i in unq_stim_ID_VD.keys()]
@@ -104,11 +103,12 @@ def get_data_3(path_raw_data, ground_truth_file):
                 unq_stim_ID_VD[key_VD] = 1
             elif key_VD in curr_keys_VD:
                 unq_stim_ID_VD[key_VD] = unq_stim_ID_VD[key_VD]+1
-            n_prev_VD.append(str(unq_stim_ID_VD[key_VD]))  
+            n_prev_VD.append(int(unq_stim_ID_VD[key_VD]))  
             
         data_id_fin['n_prev_VI'] = n_prev_VI
         data_id_fin['n_prev_VD'] = n_prev_VD
-        
+        data_id_fin['stim_IDs_VI'] = [str(i) for i in data_id_fin['stim_IDs_VI']]
+        data_id_fin['stim_IDs_VD'] = [str(i) for i in data_id_fin['stim_IDs_VD']]
         if 'A' in unique_ID:
             final_dat_A[unique_ID] = data_id_fin
         elif 'B' in unique_ID:

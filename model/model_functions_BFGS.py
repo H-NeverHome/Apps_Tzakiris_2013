@@ -52,8 +52,8 @@ def update_view_dependent(lambd_a,alpha,old_vfam):
 
 ########## Answer prob
 def answer_prob(beta,totfam):
-    p_yes = np.around((1/ (1+ np.exp((-1*beta)*totfam))), decimals=5)+ 0.000001
-    p_no = np.around((1-p_yes), decimals=5) + 0.000001
+    p_yes = np.around((1/ (1+ np.exp((-1*beta)*totfam))), decimals=5)
+    p_no = np.around((1-p_yes), decimals=5)
     return p_yes,p_no
 
 ########## View_dependent suppl. Data
