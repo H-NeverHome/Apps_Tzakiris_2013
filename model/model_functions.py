@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Jun 17 13:22:16 2020
+Created on Thu Feb  4 14:33:47 2021
 
-@author: hauke
+@author: de_hauk
 """
 
 import numpy as np
@@ -75,9 +75,6 @@ def view_dep_suppl_dat(stim_IDs_perspective):
 
 
 ################################### Winning Model: INDIPENDENTxCONTEXT #############################################
-# partial // Argumentabfolge functools partials 
-# donald knut
-
 #params [alpha, sigma, beta, lamd_a,]
 #data [VPN_output, new_ID, numb_prev_presentations, stim_IDs,verbose]
 # verbose
@@ -114,14 +111,10 @@ def VIEW_INDIPENDENTxCONTEXT(data,params):
     for trial in range(len(stim_IDs)):
        
         stim_ID,action = stim_IDs[trial],VPN_output[trial]
-        
-        
         ### Get predicted V_fam, C from last trial
 
         old_Vfam = history_V[stim_ID][-1]
         old_c = history_C[-1]   
-        
-        
         
         # Update VFam
         new_Vfam,vfam_PE = update_view_independent(lamd_a,alpha,old_Vfam)
@@ -340,12 +333,10 @@ def VIEW_DEPENDENTxCONTEXT_DEPENDENT(data, params):
     model_evidence = np.log(history_answer).sum()
     data_store = {'history_answer': history_answer,
                   'history_V_dep': history_V_dep,
-                  'history_V_dict': history_V_depend,
                   'history_total':history_total,
                   'history_C': history_C,
                   'params':[alpha, sigma, beta, lamd_a],
                   'log_like': model_evidence,
-                  'VD_init': FP_rate,
                   'suppl': FP_rate}
     if verbose == False:
         return -1*model_evidence
@@ -661,6 +652,3 @@ def VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT_CV(params,old_fam_depend,old_fam_ind
 
 
 ########################################## CV
-
-
-

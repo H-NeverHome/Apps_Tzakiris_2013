@@ -12,7 +12,7 @@ from class_import import fit_data_noCV_irr_len_data,data_fit_t1_t2_comb
 #from class_import import fit_data_NUTS
 from class_import import bayes_RFX_cond,orig_procedure
 from class_import import reformat_data_within_T,fit_data_CV,bic_modelselect
-from class_import import task_rel,corr_lr_func,fit_data_CV_mult
+from class_import import task_rel,corr_lr_func,fit_data_CV_mult,get_data_3
 import matlab.engine
 import numpy as np
 import pandas as pd
@@ -30,6 +30,8 @@ folder_path_data = r'C:\Users\de_hauk\HESSENBOX\apps_tzakiris_rep\data\processed
 data_2_sample = get_data_2(r'C:\Users\de_hauk\HESSENBOX\apps_tzakiris_rep\data\data_new_12_08_2020\data_raw\csv',
                       r'C:\Users\de_hauk\HESSENBOX\apps_tzakiris_rep\data\data_new_12_08_2020\data_list\stimuli_list.csv')
 
+data_3_sample = get_data_3(r'C:\Users\de_hauk\HESSENBOX\apps_tzakiris_rep\data\data_new_12_08_2020\data_raw\csv',
+                      r'C:\Users\de_hauk\HESSENBOX\apps_tzakiris_rep\data\data_new_12_08_2020\data_list\stimuli_list.csv')
 
 ##### Reformat data for within-time format
 data_dict_t1 = reformat_data_within_T(data_2_sample)[1]

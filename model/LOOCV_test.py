@@ -65,14 +65,14 @@ for ids in ids_t1_t2_joblib:
 
 
 
-#######
+# #######
 
-for every vpn_data:
-    for every trial in vpn_data:
-        split_data
-        opt training-data
+# for every vpn_data:
+#     for every trial in vpn_data:
+#         split_data
+#         opt training-data
 
-######
+# ######
 
 
 
@@ -114,13 +114,16 @@ hold_L = []
 for indx in range(trials_n):
     print(indx)
     
+    # Data Index -> [view-Dep-StimID, correct?, answer, V_ind StimID, n_prev_pres]
+    
     # holdout-data
     holdout_data = curr_data_vpn.copy()[indx,:]
     action = curr_data_vpn.copy()[indx,:][2]
     
     # training data
     train_data = np.delete(curr_data_vpn.copy(),indx,axis=0)
-    #train_data = curr_data_vpn.copy()
+    
+    # delete one index -> holdout-data
     curr_index = indx-1
     
     # data import
@@ -139,7 +142,7 @@ for indx in range(trials_n):
 
     data_M1 = [VPN_output, new_ID, numb_prev_presentations, stim_IDs,verbose]
 
-    bounds_M1 = [(0,1),(0,1),(.1,20),(0,2)]
+    bounds_M1 = [(.0,1.),(0.,1.),(1.,20.),(0.,2.)]
     
     part_func_M1 = partial(VIEW_INDIPENDENTxCONTEXT,data_M1) 
     res1 = optimize.fmin_l_bfgs_b(part_func_M1,
@@ -150,24 +153,19 @@ for indx in range(trials_n):
 
     data_M1[-1] = True 
     data_M1_debug = data_M1.copy()
-    #data_M1_debug[0] = curr_data_vpn[:,2].copy() 
     params_m_1 = res1[0]
     m_1 = VIEW_INDIPENDENTxCONTEXT(data_M1_debug, params_m_1)
-    
-    # init_V_m_1 = 0
-    # init_C_m_1 = 0
-    # if indx == 0:
-    #     init_V_m_1 += m_1[1]['init_val']['init_v']
-    # else:
-    #data_cv_score = np.array(m_1[1]['data_store_1'])
-    init_V_m_1 = m_1[1]['history_V_dict'][holdout_data[3]][holdout_data[5]-2]
+    try:
+        init_V_m_1 = m_1[1]['history_V_dict'][holdout_data[3]][holdout_data[5]-1]
+    except:
+        init_V_m_1 = m_1[1]['history_V_dict'][holdout_data[3]][-1]
     init_C_m_1 = np.array(m_1[1]['data_store_1']['history_C'])[curr_index]
     
 
     cv_trial_indeXcontext,totfam = VIEW_INDIPENDENTxCONTEXT_CV(params_m_1,
-                                                        init_V_m_1,
-                                                        init_C_m_1,
-                                                        action)
+                                                               init_V_m_1,
+                                                               init_C_m_1,
+                                                               action)
     
     
 ###################################### VIEW_DEPENDENT ######################################            
@@ -190,20 +188,54 @@ for indx in range(trials_n):
 
     
     m_2 = VIEW_DEPENDENT(data_M2_debug, params_m_2)
-
     init_V_m_2 = 0
-    if indx == 0:
-        init_V_m_2 += m_2[1]['init_val']
+    
+    v_dep_dict = m_2[1]['history_V']
+    try:
+        init_V_m_2 = v_dep_dict[holdout_data[0]][holdout_data[5]-1]
+    except:
+        try:
+            init_V_m_2 = v_dep_dict[holdout_data[0]][-1]
+        except:
+            init_V_m_2 = m_2[1]['init_val']
 
-    else:
-        data_cv_score = m_2[1]['history_V_cv'][curr_index]
-        init_V_m_2 += data_cv_score
 
     cv_trial_dep = VIEW_DEPENDENT_CV(params_m_2,
                                       init_V_m_2,
                                       action)
     
+######################################### VIEW_DEPENDENTxCONTEXT_DEPENDENT ##################################### 
+            
+    data_M3 = [VPN_output, new_ID, stim_IDs, stim_IDs_perspective, verbose]
+    bounds_M3 = [(0,1),(0,1),(.1,20),(0,2)]
+
+    part_func_M3 = partial(VIEW_DEPENDENTxCONTEXT_DEPENDENT,data_M3) 
+    res3 = optimize.fmin_l_bfgs_b(part_func_M3,
+                                  approx_grad = True,
+                                  bounds = bounds_M3, 
+                                  x0 = [x_0_bfgs for i in range(len(bounds_M3))],
+                                  epsilon=epsilon_param)
+
+    data_M3_debug = data_M3.copy()
+    data_M3_debug[-1] = True 
+    params_m_3 = res3[0]
+    m_3 = VIEW_DEPENDENTxCONTEXT_DEPENDENT(data_M3_debug, params_m_3)
     
+    v_dep_dict_M3 = m_3[1]['history_V_dict']
+    try:
+        init_V_m_3 = v_dep_dict_M3[holdout_data[0]][holdout_data[5]-1]
+    except:
+        try:
+            init_V_m_3 = v_dep_dict_M3[holdout_data[0]][-1]
+        except:
+            init_V_m_3 = m_3[1]['VD_init']
+
+    init_C_m_3 = np.array(m_3[1]['history_C'])[curr_index]
+
+    cv_trial_dep_cont = VIEW_DEPENDENTxCONTEXT_DEPENDENT_CV(params_m_3,
+                                                            init_V_m_3,
+                                                            init_C_m_3,
+                                                            action)    
 ########################### rnd_choice ###################################################     
     '''for every answer predicted model prob of =.5'''
     ans_prob_rnd = np.log(.5)
@@ -213,6 +245,7 @@ for indx in range(trials_n):
     
     cv_score_view_ind_cont.append(cv_trial_indeXcontext)
     cv_score_view_dep.append(cv_trial_dep)
+    cv_score_view_dep_cont.append(cv_trial_dep_cont)
     cv_score_rnd.append(ans_prob_rnd)
     models.append({'VIEW_INDIPENDENTxCONTEXT': {'model_res':m_1,
                                                 'cv_score':cv_trial_indeXcontext,
@@ -228,10 +261,12 @@ for indx in range(trials_n):
     
 df_index = ['VIEW_INDIPENDENTxCONTEXT',
             'VIEW_DEPENDENT',
+            'VIEW_DEPENDENTxCONTEXT_DEPENDENT',
             'RANDOM_CHOICE']
 
 df_data = [np.array(cv_score_view_ind_cont).sum(),
            np.array(cv_score_view_dep).sum(),
+           np.array(cv_score_view_dep_cont).sum(),
            np.array(cv_score_rnd).sum()]
 
 cv_trial = pd.DataFrame(data = df_data, index=df_index)
