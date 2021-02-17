@@ -52,14 +52,13 @@ def VIEW_INDIPENDENTxCONTEXT(data, cv_trial, params):
     ### inner loop through trials
     #for stim_ID,action,num_pres,trial in zip(stim_IDs,VPN_output,numb_prev_presentations,range(len(stim_IDs))):
     for trial in range(len(stim_IDs)):
-       
-        stim_ID,action = stim_IDs[trial],VPN_output[trial]
         
+        ## get observed stim & observed action
+        stim_ID,action = stim_IDs[trial],VPN_output[trial]
         
         ### Get predicted V_fam, C from last trial
         old_Vfam = history_V[stim_ID][-1]
         old_c = history_C[-1]   
-        
         
         # Update VFam
         new_Vfam,vfam_PE = update_view_independent(lamd_a,alpha,old_Vfam)
@@ -68,6 +67,7 @@ def VIEW_INDIPENDENTxCONTEXT(data, cv_trial, params):
         newfamlist = history_V[stim_ID].copy() + [new_Vfam]
         history_V[stim_ID] = newfamlist
         history_V_ind.append(new_Vfam)
+        
         # Update C Fam   
         new_c, context_PE = update_context(sigma,old_c,old_Vfam)
         history_C_pe.append(context_PE)
@@ -79,22 +79,23 @@ def VIEW_INDIPENDENTxCONTEXT(data, cv_trial, params):
 
         #get answer prob
         p_yes,p_no = answer_prob(beta,totfam)
-        if cv_trial == None:
+        if cv_trial is None:
             if action == 1:
                 history_answer.append(p_yes)
             if action == 0:
                 history_answer.append(p_no)
             action_CV_L.append(action)
-        elif cv_trial != None:
-            if cv_trial != trial:
+        elif (cv_trial is not None):
+            if (cv_trial != trial):
                 if action == 1:
                     history_answer.append(p_yes)
-                if action == 0:
+                elif action == 0:
                     history_answer.append(p_no)
                 action_CV_L.append(action)
-            else:
+            elif (cv_trial == trial):           
                 action_CV = np.random.binomial(1,np.around(p_yes,decimals=5),1)[0]
                 action_CV_L.append(action_CV)
+
             
     model_evidence = np.log(history_answer).sum()
     if verbose == False:
@@ -192,15 +193,10 @@ def view_dep_suppl_dat(stim_IDs_perspective):
 
 
 
-data_2_sample = get_data_2(r'C:\Users\de_hauk\HESSENBOX\apps_tzakiris_rep\data\data_new_12_08_2020\data_raw\csv',
-                      r'C:\Users\de_hauk\HESSENBOX\apps_tzakiris_rep\data\data_new_12_08_2020\data_list\stimuli_list.csv')
 
 data_3_sample = get_data_3(r'C:\Users\de_hauk\HESSENBOX\apps_tzakiris_rep\data\data_new_12_08_2020\data_raw\csv',
                       r'C:\Users\de_hauk\HESSENBOX\apps_tzakiris_rep\data\data_new_12_08_2020\data_list\stimuli_list.csv')
 
-##### Reformat data for within-time format
-data_dict_t1 = reformat_data_within_T(data_2_sample)[1]
-data_dict_t2 = reformat_data_within_T(data_2_sample)[3]  
 
 
 
@@ -254,7 +250,7 @@ res_evidence = pd.DataFrame(index=models_names)
 trialwise_data = {}
 bf_log_group = pd.DataFrame()
 res_all = []
-for vpn in unique_id[0:1]:
+for vpn in unique_id:
     print(vpn)
 
     curr_data_vpn = data[vpn]
@@ -279,65 +275,56 @@ for vpn in unique_id[0:1]:
     
     final_data_data = []
     
+
+        
+    ########## Model Optim
+    #print('VIEW_INDIPENDENTxCONTEXT')   
     bounds_M1 = models_bounds['VIEW_INDIPENDENTxCONTEXT']
+    
+    ##### optimize model w/o CV, all trials
+    part_func_M1 = partial(VIEW_INDIPENDENTxCONTEXT, data_ALL, None)
+    res_M1 = optimize.fmin_l_bfgs_b(part_func_M1,
+                                  approx_grad = True,
+                                  bounds = bounds_M1, 
+                                  x0 = [x_0_bfgs for i in range(len(bounds_M1))],
+                                  epsilon=epsilon_param)
+    
+    verbose_M1 = VIEW_INDIPENDENTxCONTEXT(data_ALL_verbose, None, res_M1[0])
         
-    part_func_M1A = partial(VIEW_INDIPENDENTxCONTEXT, data_ALL, None)
-    # optimize model
-    res11 = optimize.fmin_l_bfgs_b(part_func_M1A,
-                                      approx_grad = True,
-                                      bounds = bounds_M1, 
-                                      x0 = [x_0_bfgs for i in range(len(bounds_M1))],
-                                      epsilon=epsilon_param)
-        
-    expl_res11 = VIEW_INDIPENDENTxCONTEXT(data_ALL_verbose, None, res11[0])
 
     for trials_CV in range(len(VPN_output)):
         print(trials_CV)
-        ##### Model Optim
-        #print('VIEW_INDIPENDENTxCONTEXT')
-    
-    
-        bounds_M1 = models_bounds['VIEW_INDIPENDENTxCONTEXT']
+        ##### optimize model CV
+        # do not evaluate current trial, impute action via binom dist
+        part_func_M1_CV = partial(VIEW_INDIPENDENTxCONTEXT, data_ALL, trials_CV)
         
-        part_func_M1A = partial(VIEW_INDIPENDENTxCONTEXT, data_ALL, None)
-        # optimize model
-        res11 = optimize.fmin_l_bfgs_b(part_func_M1A,
+        res_M1_CV = optimize.fmin_l_bfgs_b(part_func_M1_CV,
                                       approx_grad = True,
                                       bounds = bounds_M1, 
                                       x0 = [x_0_bfgs for i in range(len(bounds_M1))],
                                       epsilon=epsilon_param)
         
-        expl_res11 = VIEW_INDIPENDENTxCONTEXT(data_ALL_verbose, None, res11[0])
+        verbose_M1_CV = VIEW_INDIPENDENTxCONTEXT(data_ALL_verbose, trials_CV, res_M1_CV[0])
         
-        
-        # optimize model CV
-        
-        trials_CV = 55
-        part_func_M1 = partial(VIEW_INDIPENDENTxCONTEXT, data_ALL, trials_CV)
-        
-        res1 = optimize.fmin_l_bfgs_b(part_func_M1,
-                                      approx_grad = True,
-                                      bounds = bounds_M1, 
-                                      x0 = [x_0_bfgs for i in range(len(bounds_M1))],
-                                      epsilon=epsilon_param)
-        
-        expl_res = VIEW_INDIPENDENTxCONTEXT(data_ALL_verbose, trials_CV, res1[0])
-        #evaluate model
-        data_ALL_CV = [expl_res[1]['model_internals']['action_CV'],#VPN_output.astype(int), 
+        ##### evaluate imputed data with in CV procedure optimized params
+        data_ALL_CV = [verbose_M1_CV[1]['model_internals']['action_CV'], # insert imputed data
                        new_ID.astype(int), 
                        n_prev_pres.astype(int), 
                        stim_IDs_VI, 
                        stim_IDs_VD, 
                        True]
-        
-        expl_res_CV = VIEW_INDIPENDENTxCONTEXT(data_ALL_CV, None, res1[0])
+        #print('gothere')
+        expl_res_CV = VIEW_INDIPENDENTxCONTEXT(data_ALL_CV, None, res_M1_CV[0])
         cv_score_log = np.log(expl_res_CV[1]['model_internals']['answer_prob'][trials_CV])
-        
-        res_total_fin = {'opt_norm': expl_res11,
-                         'gen_CV_dat': expl_res,
-                         'CV_model': expl_res_CV,
-                         'CV_score': cv_score_log}
         final_data_data.append(cv_score_log)
+        
+        
+        res_total_fin = {'opt_model_norm': verbose_M1,
+                         'opt_model_CV': verbose_M1_CV,
+                         'eval_CV': expl_res_CV,
+                         'CV_score': cv_score_log}
+        
     #TODO Wrong results
-    final_data_sum = np.sum(final_data_data)   
-    #res_all.append((res1,expl_res,expl_res1))
+    res_all.append({'LOOCV_score':np.sum(final_data_data),
+                    'normal_opt': verbose_M1})   
+
