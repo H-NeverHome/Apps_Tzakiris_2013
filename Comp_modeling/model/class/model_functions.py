@@ -81,6 +81,13 @@ def view_dep_suppl_dat(stim_IDs_perspective):
 #params [alpha, sigma, beta, lamd_a,]
 #data [VPN_output, new_ID, numb_prev_presentations, stim_IDs,verbose]
 # verbose
+#new
+
+
+
+
+
+#old
 
 def VIEW_INDIPENDENTxCONTEXT(data,params):
     

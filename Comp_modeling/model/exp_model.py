@@ -36,21 +36,24 @@ def VIEW_INDIPENDENTxCONTEXT(data, cv_trial, params):
     
     # get false positive answer rate
     FP_rate = FP_rate_independent(lamd_a,VPN_output,numb_prev_presentations)
-
     
     ### dict for Trackkeeping of history
     history_V = dict.fromkeys([str(i) for i in range(1,25)], [FP_rate]) #set initial value of view_ind_fam as FP rate A&T pg.8 R
     history_C = [0]
-    history_C_pe = []
     history_V_ind = []
+    
+    history_C_pe = []
+    vfam_PE_list = []
+    
     history_total = []
     history_answer = []
     model_evidence = 0
-    vfam_PE_list = []
-
+    
+    # store actions for further use
     action_CV_L = []
+    
     ### inner loop through trials
-    #for stim_ID,action,num_pres,trial in zip(stim_IDs,VPN_output,numb_prev_presentations,range(len(stim_IDs))):
+    
     for trial in range(len(stim_IDs)):
         
         ## get observed stim & observed action
@@ -79,20 +82,26 @@ def VIEW_INDIPENDENTxCONTEXT(data, cv_trial, params):
 
         #get answer prob
         p_yes,p_no = answer_prob(beta,totfam)
+        
+        # if no CV
         if cv_trial is None:
             if action == 1:
                 history_answer.append(p_yes)
             if action == 0:
                 history_answer.append(p_no)
             action_CV_L.append(action)
+        # if CV
         elif (cv_trial is not None):
+            # if model not at specified holdout trial
             if (cv_trial != trial):
                 if action == 1:
                     history_answer.append(p_yes)
                 elif action == 0:
                     history_answer.append(p_no)
                 action_CV_L.append(action)
-            elif (cv_trial == trial):           
+            # if model at specified holdout trial
+            elif (cv_trial == trial):  
+                # impute action via binom var using p_yes prob
                 action_CV = np.random.binomial(1,np.around(p_yes,decimals=5),1)[0]
                 action_CV_L.append(action_CV)
 
@@ -250,6 +259,8 @@ res_evidence = pd.DataFrame(index=models_names)
 trialwise_data = {}
 bf_log_group = pd.DataFrame()
 res_all = []
+
+
 for vpn in unique_id:
     print(vpn)
 
@@ -289,13 +300,16 @@ for vpn in unique_id:
                                   x0 = [x_0_bfgs for i in range(len(bounds_M1))],
                                   epsilon=epsilon_param)
     
+    # plugin opt params and verbose
     verbose_M1 = VIEW_INDIPENDENTxCONTEXT(data_ALL_verbose, None, res_M1[0])
         
-
+    # define holdout trials by iteration
+    res_verbose = []
     for trials_CV in range(len(VPN_output)):
         print(trials_CV)
+        
         ##### optimize model CV
-        # do not evaluate current trial, impute action via binom dist
+        # do not evaluate current CV_trial, opt params
         part_func_M1_CV = partial(VIEW_INDIPENDENTxCONTEXT, data_ALL, trials_CV)
         
         res_M1_CV = optimize.fmin_l_bfgs_b(part_func_M1_CV,
@@ -304,17 +318,21 @@ for vpn in unique_id:
                                       x0 = [x_0_bfgs for i in range(len(bounds_M1))],
                                       epsilon=epsilon_param)
         
+        #plugin opt params and evaluate model, get imputed data
         verbose_M1_CV = VIEW_INDIPENDENTxCONTEXT(data_ALL_verbose, trials_CV, res_M1_CV[0])
         
-        ##### evaluate imputed data with in CV procedure optimized params
+        
         data_ALL_CV = [verbose_M1_CV[1]['model_internals']['action_CV'], # insert imputed data
                        new_ID.astype(int), 
                        n_prev_pres.astype(int), 
                        stim_IDs_VI, 
                        stim_IDs_VD, 
                        True]
-        #print('gothere')
+        
+        ##### evaluate imputed data with in CV procedure optimized params
         expl_res_CV = VIEW_INDIPENDENTxCONTEXT(data_ALL_CV, None, res_M1_CV[0])
+        
+        #access LL of the CV_trial and store
         cv_score_log = np.log(expl_res_CV[1]['model_internals']['answer_prob'][trials_CV])
         final_data_data.append(cv_score_log)
         
@@ -323,7 +341,7 @@ for vpn in unique_id:
                          'opt_model_CV': verbose_M1_CV,
                          'eval_CV': expl_res_CV,
                          'CV_score': cv_score_log}
-        
+        res_verbose.append(res_total_fin)
     #TODO Wrong results
     res_all.append({'LOOCV_score':np.sum(final_data_data),
                     'normal_opt': verbose_M1})   
