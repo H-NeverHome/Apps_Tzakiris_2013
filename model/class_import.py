@@ -396,7 +396,7 @@ def pears_corr(task_perf):
 def task_rel(task_perf):
     corr = pears_corr(task_perf)
     icc = task_icc(task_perf)
-    return (corr,icc)
+    return (corr,icc,task_perf)
     
     
 
@@ -1784,9 +1784,6 @@ def model_selection_AT():
         # Get n_params
         win_nparam = ll_dat[model_win][1]
         cntrl_nparam = ll_dat[i][1]
-        
-
-    
         # uncorr LR
         lr_var = -2*(cntrl_ll-win_ll)
         # corr LL -> Glover & Dixon, 2004

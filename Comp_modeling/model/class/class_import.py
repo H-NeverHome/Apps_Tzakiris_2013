@@ -111,7 +111,7 @@ class Apps_Tsakiris_2013:
         if verbose == True:
             return final_dat
 
-    def fit_data(self, verbose_tot):
+    def fit_data_seperate(self, verbose_tot):
         import os
         os.chdir(self.path_to_modelfunctions)
         
@@ -364,7 +364,32 @@ class Apps_Tsakiris_2013:
             return (results_1,restotal,data_verbose_debug)
         elif verbose_tot==False:
             return results_1
+
+    def RFX_modelselection(self, fit_data):       
+        import matlab.engine
+        import numpy as np
+        eng = matlab.engine.start_matlab()
+        #see https://mbb-team.github.io/VBA-toolbox/wiki/BMS-for-group-studies/#between-conditions-rfx-bms
+        data_raw = fit_data['subject_level_model_evidence'].copy()
+        data_clms = [i for i in data_raw.columns]
+        a_t = data_raw[[i for i in data_clms if 'A' in i]]
+        b_t = data_raw[[i for i in data_clms if 'B' in i]]
         
+        # a_t = fit_data_sample_T1['subject_level_model_evidence'].copy()
+        # b_t = fit_data_sample_T2['subject_level_model_evidence'].copy()
+        # mt array(rows,columns,sheets)
+        # RFX-array(models,subjects,cond)
+    
+        data_rfx_cond= np.zeros([7,3,2])
+        data_rfx_cond[:,:,0] = [[j for j in i[1]] for i in a_t.iterrows()]
+        data_rfx_cond[:,:,1] = [[j for j in i[1]] for i in b_t.iterrows()]
+        data_rfx_cond_m = matlab.double(data_rfx_cond.tolist())
+        
+        # non-exceedance probability of difference in models across conditions
+        non_exceedence_prob = eng.VBA_groupBMC_btwConds(data_rfx_cond_m)
+        # exceedance probability of no larger difference in models across conditions
+        #ex_prob = 1-float(non_exceedence_prob)
+        return ('non_exceedence_prob',non_exceedence_prob)
         
     def behavioral_performance(self):
         
@@ -406,15 +431,154 @@ class Apps_Tsakiris_2013:
         self.behav_perf = results
         return results
             
-    def learning_effect(self):
+    def learning_effect(self):       
         
+        import pingouin as pg
+        import pandas as pd
         data_raw = self.clean_data
         data_A = data_raw['A']
         data_B = data_raw['B']
         data_AB = {**data_A,**data_B}
         unq_ids = list(data_AB.keys())
         
-        #for vpn in unq_ids
+        df_1_3_L_A = []
+        df_10_10_L_A = []
+        df_1_3_L_B = []
+        df_10_10_L_B = []
+        for vpn in unq_ids:
+            curr_dat = data_AB[vpn]
+            df_1_2_3 = curr_dat.loc[curr_dat['n_prev_VI'] <=3]['answer'].sum()/len(curr_dat.loc[curr_dat['n_prev_VI'] <=3]['answer'].index)
+            df_10_11_12 = curr_dat.loc[curr_dat['n_prev_VI'] >=10]['answer'].sum()/len(curr_dat.loc[curr_dat['n_prev_VI'] >=10]['answer'].index)
+            if 'A' in vpn:   
+                df_1_3_L_A.append(df_1_2_3)
+                df_10_10_L_A.append(df_10_11_12)
+            elif 'B' in vpn:
+                df_1_3_L_B.append(df_1_2_3)
+                df_10_10_L_B.append(df_10_11_12)
+                
+        p_answer = pd.DataFrame()
+        p_answer['A_1_3'] = df_1_3_L_A
+        p_answer['B_1_3'] = df_1_3_L_B
+        p_answer['A_10_12'] = df_10_10_L_A
+        p_answer['B_10_12'] = df_10_10_L_B
         
+        
+        res_A = pg.ttest(p_answer['A_10_12'],p_answer['A_1_3'])
+        res_B = pg.ttest(p_answer['B_10_12'],p_answer['B_1_3'])
+        
+        res = pd.DataFrame(index = [i for i in res_A.columns])
+        res['A_123_vs_101112'] = res_A.loc['T-test']
+        res['B_123_vs_101112'] = res_B.loc['T-test']
+        
+        #AT_2013 effectsize
+        # reconstruct effectsize from apps&tsakiris study
+        observed_D = pg.compute_effsize_from_t(14.661, N=16, eftype='cohen')
+        req_N = pg.power_ttest(d=observed_D,
+                               power=.95,
+                               n=None)
+        
+        power_analysis = {'AT_t':14.661,
+                          'AT_N':16,
+                          'AT_recon_D':observed_D,
+                          'AT_req_N':req_N}
+                            
+        tot_res = {'used_dat':data_raw,
+                   'proc_data':p_answer,
+                   'res_ttest':res,
+                   'AT_ES_D_poweranalysis':power_analysis}
+        return tot_res
+    
+    def task_reliability(self):
+            
+        # ICC
+        res_beh = self.behav_perf
+        icc_data = res_beh['res_A'].T.append(res_beh['res_B'].T).round(3)
+        
+        icc_data['time'] = [i[-1] for i in icc_data.index]
+        icc_data['id'] = [i[0] for i in icc_data.index]
+        
+        import pingouin as pg
+        icc = pg.intraclass_corr(data=icc_data, 
+                                 targets='id', 
+                                 raters='time',
+                                 ratings='%_correct')
+        icc_2 = icc.loc[icc['Type'] == 'ICC2']
+        #pearson_corr
+        corr_data = icc_data
+        corr_data_A = corr_data.loc[corr_data['time'] == 'A']['%_correct']
+        corr_data_B = corr_data.loc[corr_data['time'] == 'B']['%_correct']
+        corr = pg.corr(corr_data_A, corr_data_B, tail='two-sided', method='pearson')
+        
+        res = {'icc': icc_2,
+              'corr': corr}  
+        return res
+    
+    def model_selection_AT(self):
+        import pandas as pd
+        import numpy as np
+        from scipy import special
+        ########## Data Transcribed from paper
+        
+        ##### Model_selection
+        # Formulas from: 
+        #   Glover, S., Dixon, P. 
+        #   Likelihood ratios: A simple and flexible statistic for empirical psychologists. 
+        #   Psychonomic Bulletin & Review 11, 791–806 (2004). 
+        #   https://doi.org/10.3758/BF03196706
+        
+        ll_raw = {'View-dependent': [-1590,3],
+                  'View-dependent_context-dependent': [-1510,4],
+                  'View-INdependent': [-1480,3],
+                  'View-independent_context-dependent': [-1425,4],
+                  'View-independent_View-dependent': [-1475,5],
+                  'View-independent_View-dependent_context-dependent': [-1430,6],
+                  }
+        ll_dat = pd.DataFrame.from_dict(data=ll_raw)
+        ll_dat['indx']=['ll','n_param']
+        ll_dat.set_index(keys='indx',inplace=True)
+        
+        model_win = 'View-independent_context-dependent'
+        model_cntrl = [i for i in ll_dat if i != model_win]
+        model_all = [i for i in ll_dat]
+        
+        ll_fin = pd.DataFrame(index = ['LR','LR_corr'])
+        n_size = 16
+        
+        
+        for i in model_cntrl:
+            # Get Log-Likelihoods
+            cntrl_ll = ll_dat[i][0]
+            win_ll = ll_dat[model_win][0]
+            
+            # Get n_params
+            win_nparam = ll_dat[model_win][1]
+            cntrl_nparam = ll_dat[i][1]
+            # uncorr LR
+            lr_var = -2*(cntrl_ll-win_ll)
+            # corr LL -> Glover & Dixon, 2004
+            lr_corr = lr_var*((np.exp((cntrl_nparam-win_nparam)))**(np.log(n_size)/2))
+            
+            # POSITIVE VALUES FAVOR WINNING MODEL
+            ll_fin[i] = [lr_var]+[lr_corr]
+        
+        # Compare Multiple Models, lambda_mult     
+        lmbda_mult = -2*(special.logsumexp(np.array(ll_dat.T['ll'])-ll_dat[model_win][0]))
+        
+        #transpose 
+        
+        
+        #get BIC
+        bic = []
+        for i in model_all:
+            raw_ll = ll_dat[i][0]
+            nparam = ll_dat[i][1]
+            bic_raw = (nparam*np.log(n_size))-(2*raw_ll)
+            bic.append(bic_raw)
+        
+        ll_dat = ll_dat.T
+        ll_dat['BIC'] = bic
+        return {'AT_model_selection_results_nparams': ll_dat,
+                'lambda_mult_model_selection':lmbda_mult,
+                'LR_fin': ll_fin}  
         
  

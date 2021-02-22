@@ -57,39 +57,39 @@ at_model = model_selection_AT()
 fit_data_sample_T1 = fit_data_noCV_irr_len_data(data_dict_t1, 0.01, True)
 fit_data_sample_T2 = fit_data_noCV_irr_len_data(data_dict_t2, 0.01, True)
 
-#save results
-# path = r'C:\Users\de_hauk\HESSENBOX\apps_tzakiris_rep\data\output'
-# fit_data_sample_T1['subject_level_model_evidence'].to_csv(path + '/fit_data_sample_T1.csv')
-# fit_data_sample_T2['subject_level_model_evidence'].to_csv(path + '/fit_data_sample_T2.csv')
+# #save results
+# # path = r'C:\Users\de_hauk\HESSENBOX\apps_tzakiris_rep\data\output'
+# # fit_data_sample_T1['subject_level_model_evidence'].to_csv(path + '/fit_data_sample_T1.csv')
+# # fit_data_sample_T2['subject_level_model_evidence'].to_csv(path + '/fit_data_sample_T2.csv')
 
-# ##### fit data sample N=3, T1 & T2 SEPERATE // LOOCV // No imput
-#TODO
-#Check for bugs 
+# # ##### fit data sample N=3, T1 & T2 SEPERATE // LOOCV // No imput
+# #TODO
+# #Check for bugs 
 
-fit_data_CV_df_A = fit_data_CV(data_dict_t1, 0.01, False)
-fit_data_CV_df_B = fit_data_CV(data_dict_t2, 0.01, False)
+# fit_data_CV_df_A = fit_data_CV(data_dict_t1, 0.01, False)
+# fit_data_CV_df_B = fit_data_CV(data_dict_t2, 0.01, False)
 
-# ##### fit data sample N=3, T1 & T2 COMBINED // NO LOOCV // No imput
+# # ##### fit data sample N=3, T1 & T2 COMBINED // NO LOOCV // No imput
 
-fit_data_t1_t2 = data_fit_t1_t2_comb(data_dict_t1,data_dict_t2, 0.01)
+# fit_data_t1_t2 = data_fit_t1_t2_comb(data_dict_t1,data_dict_t2, 0.01)
 
-# ########### Between time model fitting
-# Model Select (t-test procedure, BIC dBIC)
-res_tt_func = orig_procedure(fit_data_sample_T1, fit_data_sample_T2)
+# # ########### Between time model fitting
+# # Model Select (t-test procedure, BIC dBIC)
+# res_tt_func = orig_procedure(fit_data_sample_T1, fit_data_sample_T2)
 
-# Model Select (BIC )
-from class_import import reformat_data_within_T,bic_modelselect
-res_bic1 = bic_modelselect(fit_data_sample_T1, fit_data_sample_T2)
-bic_model_n = [i for i in res_bic1[0]]
+# # Model Select (BIC )
+# from class_import import reformat_data_within_T,bic_modelselect
+# res_bic1 = bic_modelselect(fit_data_sample_T1, fit_data_sample_T2)
+# bic_model_n = [i for i in res_bic1[0]]
 
-from scipy.special import logsumexp
-dat_bivc = res_bic1[0].loc[[i for i in res_bic1[0].index if 'A' in i]].sum()
+# from scipy.special import logsumexp
+# dat_bivc = res_bic1[0].loc[[i for i in res_bic1[0].index if 'A' in i]].sum()
 
-mult = (dat_bivc[bic_model_n[0]] - logsumexp([dat_bivc[i].sum() for i in bic_model_n]))
+# mult = (dat_bivc[bic_model_n[0]] - logsumexp([dat_bivc[i].sum() for i in bic_model_n]))
 
 
-res_bic_A = res_bic1.T[[i for i in res_bic1.index if 'A' in i]].sum(axis = 1)
-res_bic_B = res_bic1.T[[i for i in res_bic1.index if 'B' in i]].sum(axis = 1)
+# res_bic_A = res_bic1.T[[i for i in res_bic1.index if 'A' in i]].sum(axis = 1)
+# res_bic_B = res_bic1.T[[i for i in res_bic1.index if 'B' in i]].sum(axis = 1)
 
 # # Corrected LR ratio
 # corr_lr_1 = corr_lr_func(fit_data_sample_T1)
