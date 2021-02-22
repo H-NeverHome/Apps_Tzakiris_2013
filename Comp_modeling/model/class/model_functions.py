@@ -52,8 +52,8 @@ def update_view_dependent(lambd_a,alpha,old_vfam):
 
 ########## Answer prob
 def answer_prob(beta,totfam):
-    p_yes = np.around((1/ (1+ np.exp((-1*beta)*totfam))), decimals=5)
-    p_no = np.around((1-p_yes), decimals=5)
+    p_yes = np.around((1/ (1+ np.exp((-1*beta)*totfam))), decimals=5)+ 0.000001
+    p_no = np.around((1-p_yes), decimals=5) + 0.000001
     return p_yes,p_no
 
 ########## View_dependent suppl. Data
@@ -61,7 +61,7 @@ def answer_prob(beta,totfam):
 def view_dep_suppl_dat(stim_IDs_perspective):
     
     # Get unique amount of stimuli respecting presentation angle
-    all_stim = [i[0:4] for i in stim_IDs_perspective if len(i) == 4]
+    all_stim = [i for i in stim_IDs_perspective]
     unq_stim = np.unique(all_stim,return_counts = True)
 
     # count occurences of stimuli
@@ -79,15 +79,8 @@ def view_dep_suppl_dat(stim_IDs_perspective):
 # donald knut
 
 #params [alpha, sigma, beta, lamd_a,]
-#data [VPN_output, new_ID, numb_prev_presentations, stim_IDs,verbose]
+#data_ALL = [VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose]
 # verbose
-#new
-
-
-
-
-
-#old
 
 def VIEW_INDIPENDENTxCONTEXT(data,params):
     
@@ -100,14 +93,17 @@ def VIEW_INDIPENDENTxCONTEXT(data,params):
     new_ID = data[1]
     numb_prev_presentations = data[2]
     stim_IDs = data[3]
-    verbose = data[4]
+    verbose = data[5]
     
     # get false positive answer rate
-    FP_rate = FP_rate_independent(lamd_a,VPN_output,numb_prev_presentations)
+    #print(VPN_output)
+    FP_rate = FP_rate_independent(lamd_a,
+                                  VPN_output,
+                                  numb_prev_presentations)
 
     
     ### dict for Trackkeeping of history
-    history_V = dict.fromkeys([i for i in range(1,25)], [FP_rate]) #set initial value of view_ind_fam as FP rate A&T pg.8 R
+    history_V = dict.fromkeys([str(i) for i in range(1,25)], [FP_rate]) #set initial value of view_ind_fam as FP rate A&T pg.8 R
     history_C = [0]
     history_C_pe = []
     history_V_ind = []
@@ -208,11 +204,12 @@ def VIEW_INDIPENDENTxCONTEXT_CV(params,old_vfam,old_cfam,action):
 
 ################################### Control Model: VIEW_DEPENDENT #############################################
 #params = [alpha, beta, lamd_a]
-#data = [VPN_output, new_ID, stim_IDs, stim_IDs_perspective, verbose]
+#data_ALL = [VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose]
+
 
 def VIEW_DEPENDENT(data, params):
     alpha, beta, lamd_a = params[0], params[1], params[2]
-    VPN_output, new_ID, stim_IDs, stim_IDs_perspective, verbose = data[0],data[1],data[2],data[3],data[4]
+    VPN_output, new_ID, stim_IDs, stim_IDs_perspective, verbose = data[0],data[1],data[3],data[4],data[5]
     
     ''' Each stimulus presented from each of the 3 perspectives constitutes a new stimulus i.e. 24*3 Perspectives <= 72 possible stim IDs. BUT perspective is random - not necessary 72 unq stim 
     Stimulus context does not play a role.'''
@@ -222,7 +219,7 @@ def VIEW_DEPENDENT(data, params):
     FP_rate_dep = FP_rate_dependent(lamd_a,VPN_output,numb_presentations)
    
     ### dict for Trackkeeping of history
-    history_V_depend = dict.fromkeys([i for i in unq_stim[0]], [FP_rate_dep]) #set initial value of view_ind_fam as FP rate A&T pg.8 R
+    history_V_depend = dict.fromkeys([str(i) for i in unq_stim[0]], [FP_rate_dep]) #set initial value of view_ind_fam as FP rate A&T pg.8 R
 
     history_answer = []
     history_total = []
@@ -289,14 +286,15 @@ def VIEW_DEPENDENT_CV(params, old_fam, action):
 
 ################################### Control Model: VIEW_DEPENDENTxCONTEXT_DEPENDENT MODEL #############################################
 #params = [alpha, sigma, beta, lamd_a,]
-#data = [VPN_output, new_ID, stim_IDs, stim_IDs_perspective, verbose]
+#data_ALL = [VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose]
+
 
 
 def VIEW_DEPENDENTxCONTEXT_DEPENDENT(data, params):
     
     # Data & Parameter
     alpha, sigma, beta, lamd_a = params[0], params[1], params[2], params[3],
-    VPN_output, new_ID, stim_IDs, stim_IDs_perspective, verbose = data[0],data[1],data[2],data[3],data[4]
+    VPN_output, new_ID, stim_IDs, stim_IDs_perspective, verbose = data[0],data[1],data[3],data[4],data[5]
     
 
     unq_stim,numb_presentations = view_dep_suppl_dat(stim_IDs_perspective)
@@ -304,7 +302,7 @@ def VIEW_DEPENDENTxCONTEXT_DEPENDENT(data, params):
     FP_rate = FP_rate_dependent(lamd_a,VPN_output,numb_presentations)
    
     ### dict for Trackkeeping of history
-    history_V_depend = dict.fromkeys([i for i in unq_stim[0]], [FP_rate]) #set initial value of view_ind_fam as FP rate A&T pg.8 R
+    history_V_depend = dict.fromkeys([str(i) for i in unq_stim[0]], [FP_rate]) #set initial value of view_ind_fam as FP rate A&T pg.8 R
     history_C = [0]
     history_V_dep = []
     history_total = []
@@ -390,18 +388,19 @@ def VIEW_DEPENDENTxCONTEXT_DEPENDENT_CV(params, old_Vfam_dep, old_c, action):
 
 # ################################### Control Model: VIEW_INDEPENDENT MODEL #############################################
 #params = [alpha, beta, lamd_a]
-#data = [VPN_output, new_ID, numb_prev_presentations, stim_IDs,verbose]
+#data_ALL = [VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose]
+
 
 def VIEW_INDEPENDENT(data, params):
     
-    VPN_output, new_ID, numb_prev_presentations, stim_IDs, verbose = data[0],data[1],data[2],data[3],data[4]
+    VPN_output, new_ID, numb_prev_presentations, stim_IDs, verbose = data[0],data[1],data[2],data[3],data[5]
     alpha, beta, lamd_a = params[0], params[1], params[2],
 
     # get false positive answer rate
     FP_rate = FP_rate_independent(lamd_a,VPN_output,numb_prev_presentations)
 
     ### dict for Trackkeeping of history
-    history_V = dict.fromkeys([i for i in range(1,25)], [FP_rate]) #set initial value of view_ind_fam as FP rate A&T pg.8 R
+    history_V = dict.fromkeys([str(i) for i in range(1,25)], [FP_rate]) #set initial value of view_ind_fam as FP rate A&T pg.8 R
     history_total = []
     history_answer = []
     model_evidence = 0
@@ -468,7 +467,7 @@ def VIEW_INDEPENDENT_CV(params, old_Vfam, action):
 
 # ################################### Control Model: VIEW_INDEPENDENTxVIEW_DEPENDENT MODEL #############################################  
 #params = [alpha_ind, alpha_dep, beta, lamd_a_ind, lamd_a_dep]
-#data = [ VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose]
+#data_ALL = [VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose]
 
 def VIEW_INDEPENDENTxVIEW_DEPENDENT(data, params):
     alpha_ind, alpha_dep, beta, lamd_a_ind, lamd_a_dep = params[0], params[1],params[2],params[3],params[4],
@@ -481,8 +480,8 @@ def VIEW_INDEPENDENTxVIEW_DEPENDENT(data, params):
     unq_stim,numb_presentations = view_dep_suppl_dat(stim_IDs_perspective)
     
     ### dict for Trackkeeping of history
-    history_V_depend = dict.fromkeys([i for i in unq_stim[0]], [FP_rate_dep]) #set initial value of view_ind_fam as FP rate A&T pg.8 R
-    history_V_independ = dict.fromkeys([i for i in range(1,25)], [FP_rate_ind])
+    history_V_depend = dict.fromkeys([str(i) for i in unq_stim[0]], [FP_rate_dep]) #set initial value of view_ind_fam as FP rate A&T pg.8 R
+    history_V_independ = dict.fromkeys([str(i) for i in range(1,25)], [FP_rate_ind])
     history_answer = []
     history_total = []
     history_V_depend_L = []
@@ -564,8 +563,7 @@ def VIEW_INDEPENDENTxVIEW_DEPENDENT_CV(params,old_fam_depend,old_fam_indipend, a
 
 # ################################### Control Model: VIEW_INDEPENDENTxVIEW_DEPENDENT MODELxCONTEXT MODEL #############################################
 #params = [alpha_ind, alpha_dep, sigma, beta, lamd_a_ind, lamd_a_dep]
-#data = [VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose]
-
+#data_ALL = [VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose]
     
 def VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT(data, params):
     alpha_ind, alpha_dep, sigma, beta, lamd_a_ind, lamd_a_dep = params[0], params[1],params[2],params[3],params[4],params[5]
@@ -579,8 +577,8 @@ def VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT(data, params):
     FP_rate_ind = FP_rate_independent(lamd_a_ind,VPN_output,numb_prev_presentations)  
     
     ### dict for Trackkeeping of history
-    history_V_depend = dict.fromkeys([i for i in unq_stim[0]], [FP_rate_dep]) #set initial value of view_ind_fam as FP rate A&T pg.8 R
-    history_V_independ = dict.fromkeys([i for i in range(1,25)], [FP_rate_ind])
+    history_V_depend = dict.fromkeys([str(i) for i in unq_stim[0]], [FP_rate_dep]) #set initial value of view_ind_fam as FP rate A&T pg.8 R
+    history_V_independ = dict.fromkeys([str(i) for i in range(1,25)], [FP_rate_ind])
     history_C = [0]
 
     history_total = []
@@ -665,9 +663,6 @@ def VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT_CV(params,old_fam_depend,old_fam_ind
     if action == 0:
         return np.log(p_no)
 
-
-
-########################################## CV
 
 
 

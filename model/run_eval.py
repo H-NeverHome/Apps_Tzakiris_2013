@@ -6,7 +6,7 @@ Created on Wed Sep 16 09:48:28 2020
 """
 import os
 os.chdir(r'C:\Users\de_hauk\Documents\GitHub\Apps_Tzakiris_2013\model')
-from class_import import get_data,get_data_2,data_old_sample, fit_data_noCV
+from class_import import get_data_2,data_old_sample, fit_data_noCV
 from class_import import get_behavioral_performance,model_selection_AT
 from class_import import fit_data_noCV_irr_len_data,data_fit_t1_t2_comb
 #from class_import import fit_data_NUTS
@@ -30,8 +30,8 @@ folder_path_data = r'C:\Users\de_hauk\HESSENBOX\apps_tzakiris_rep\data\processed
 data_2_sample = get_data_2(r'C:\Users\de_hauk\HESSENBOX\apps_tzakiris_rep\data\data_new_12_08_2020\data_raw\csv',
                       r'C:\Users\de_hauk\HESSENBOX\apps_tzakiris_rep\data\data_new_12_08_2020\data_list\stimuli_list.csv')
 
-data_3_sample = get_data_3(r'C:\Users\de_hauk\HESSENBOX\apps_tzakiris_rep\data\data_new_12_08_2020\data_raw\csv',
-                      r'C:\Users\de_hauk\HESSENBOX\apps_tzakiris_rep\data\data_new_12_08_2020\data_list\stimuli_list.csv')
+# data_3_sample = get_data_3(r'C:\Users\de_hauk\HESSENBOX\apps_tzakiris_rep\data\data_new_12_08_2020\data_raw\csv',
+#                       r'C:\Users\de_hauk\HESSENBOX\apps_tzakiris_rep\data\data_new_12_08_2020\data_list\stimuli_list.csv')
 
 ##### Reformat data for within-time format
 data_dict_t1 = reformat_data_within_T(data_2_sample)[1]
@@ -58,9 +58,9 @@ fit_data_sample_T1 = fit_data_noCV_irr_len_data(data_dict_t1, 0.01, True)
 fit_data_sample_T2 = fit_data_noCV_irr_len_data(data_dict_t2, 0.01, True)
 
 #save results
-path = r'C:\Users\de_hauk\HESSENBOX\apps_tzakiris_rep\data\output'
-fit_data_sample_T1['subject_level_model_evidence'].to_csv(path + '/fit_data_sample_T1.csv')
-fit_data_sample_T2['subject_level_model_evidence'].to_csv(path + '/fit_data_sample_T2.csv')
+# path = r'C:\Users\de_hauk\HESSENBOX\apps_tzakiris_rep\data\output'
+# fit_data_sample_T1['subject_level_model_evidence'].to_csv(path + '/fit_data_sample_T1.csv')
+# fit_data_sample_T2['subject_level_model_evidence'].to_csv(path + '/fit_data_sample_T2.csv')
 
 # ##### fit data sample N=3, T1 & T2 SEPERATE // LOOCV // No imput
 #TODO

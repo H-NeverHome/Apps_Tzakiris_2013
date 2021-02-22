@@ -261,7 +261,7 @@ bf_log_group = pd.DataFrame()
 res_all = []
 
 
-for vpn in unique_id:
+for vpn in unique_id[0:1]:
     print(vpn)
 
     curr_data_vpn = data[vpn]
@@ -305,44 +305,94 @@ for vpn in unique_id:
         
     # define holdout trials by iteration
     res_verbose = []
-    for trials_CV in range(len(VPN_output)):
-        print(trials_CV)
+    
+    cv_trials = [i for i in range(len(VPN_output))][1::]
+    for trial_rl_cv in cv_trials:
+    #for trials_CV in range(len(VPN_output)):
+        #print(trials_CV)
         
-        ##### optimize model CV
-        # do not evaluate current CV_trial, opt params
-        part_func_M1_CV = partial(VIEW_INDIPENDENTxCONTEXT, data_ALL, trials_CV)
+            # get data
+        stim_IDs_VI=    np.array(curr_data_vpn['stim_IDs_VI'])[0:trial_rl_cv-1]  #stimulus IDs of winning model 
+        new_ID=         np.array(curr_data_vpn['new_IDs'])[0:trial_rl_cv-1]     #trials where new ID is introduced 
+        n_prev_pres=    np.array(curr_data_vpn['n_prev_VI'])[0:trial_rl_cv-1]    #number_of_prev_presentations
+        stim_IDs_VD=    np.array(curr_data_vpn['stim_IDs_VD'])[0:trial_rl_cv-1]  #view dependent
+        VPN_output =    np.array(curr_data_vpn['answer'])[0:trial_rl_cv-1]       #VPN answers
+        verbose =       False
+        
+        data_roll_CV = [VPN_output.astype(int), 
+                        new_ID.astype(int), 
+                        n_prev_pres.astype(int), 
+                        stim_IDs_VI, 
+                        stim_IDs_VD, 
+                        verbose]
+        
+        
+        #### roll CV
+        part_func_M1_CV = partial(VIEW_INDIPENDENTxCONTEXT, data_roll_CV, None)
         
         res_M1_CV = optimize.fmin_l_bfgs_b(part_func_M1_CV,
                                       approx_grad = True,
                                       bounds = bounds_M1, 
                                       x0 = [x_0_bfgs for i in range(len(bounds_M1))],
-                                      epsilon=epsilon_param)
+                                      epsilon=epsilon_param)        
         
-        #plugin opt params and evaluate model, get imputed data
-        verbose_M1_CV = VIEW_INDIPENDENTxCONTEXT(data_ALL_verbose, trials_CV, res_M1_CV[0])
+        verbose_M1_CV = VIEW_INDIPENDENTxCONTEXT(data_ALL_verbose, None, res_M1_CV[0])
         
+        roll_cv = np.log(np.array(verbose_M1[1]['model_internals']['answer_prob']))
+        # ##### optimize model CV
+        # # do not evaluate current CV_trial, opt params
+        # part_func_M1_CV = partial(VIEW_INDIPENDENTxCONTEXT, data_ALL, trials_CV)
         
-        data_ALL_CV = [verbose_M1_CV[1]['model_internals']['action_CV'], # insert imputed data
-                       new_ID.astype(int), 
-                       n_prev_pres.astype(int), 
-                       stim_IDs_VI, 
-                       stim_IDs_VD, 
-                       True]
+        # res_M1_CV = optimize.fmin_l_bfgs_b(part_func_M1_CV,
+        #                               approx_grad = True,
+        #                               bounds = bounds_M1, 
+        #                               x0 = [x_0_bfgs for i in range(len(bounds_M1))],
+        #                               epsilon=epsilon_param)
         
-        ##### evaluate imputed data with in CV procedure optimized params
-        expl_res_CV = VIEW_INDIPENDENTxCONTEXT(data_ALL_CV, None, res_M1_CV[0])
-        
-        #access LL of the CV_trial and store
-        cv_score_log = np.log(expl_res_CV[1]['model_internals']['answer_prob'][trials_CV])
-        final_data_data.append(cv_score_log)
+        # #plugin opt params and evaluate model, get imputed data
+        # verbose_M1_CV = VIEW_INDIPENDENTxCONTEXT(data_ALL_verbose, trials_CV, res_M1_CV[0])
         
         
-        res_total_fin = {'opt_model_norm': verbose_M1,
-                         'opt_model_CV': verbose_M1_CV,
-                         'eval_CV': expl_res_CV,
-                         'CV_score': cv_score_log}
-        res_verbose.append(res_total_fin)
+        # data_ALL_CV = [verbose_M1_CV[1]['model_internals']['action_CV'], # insert imputed data
+        #                new_ID.astype(int), 
+        #                n_prev_pres.astype(int), 
+        #                stim_IDs_VI, 
+        #                stim_IDs_VD, 
+        #                True]
+        
+        # ##### evaluate imputed data with in CV procedure optimized params
+        # expl_res_CV = VIEW_INDIPENDENTxCONTEXT(data_ALL_CV, None, res_M1_CV[0])
+        
+        # #access LL of the CV_trial and store
+        # cv_score_log = np.log(expl_res_CV[1]['model_internals']['answer_prob'][trials_CV])
+        
+        # final_data_data.append(cv_score_log)
+        
+        
+        # res_total_fin = {'opt_model_norm': verbose_M1,
+        #                  'opt_model_CV': verbose_M1_CV,
+        #                  'eval_CV': expl_res_CV,
+        #                  'CV_score': cv_score_log}
+        # res_verbose.append(res_total_fin)
     #TODO Wrong results
+    opt_norm_LL = np.log(np.array(verbose_M1[1]['model_internals']['answer_prob']))
     res_all.append({'LOOCV_score':np.sum(final_data_data),
+                    'LOOCV_score_L':final_data_data,
+                    'opt_norm_LL': opt_norm_LL,
+                    'diff_LL' : np.abs(np.array(opt_norm_LL).round(3)-np.array(final_data_data).round(3)),
+                    'data': VPN_output,
                     'normal_opt': verbose_M1})   
 
+# #Apps and Tsakiris Model
+# -> technically not a time series model because observed actions are 
+# assumed (i guess) to be generated by i.i.d. binomial vars, cond. iid
+# -> actions/data need to be assumed i.i.d., otherwise sum log-likelihood not applicable
+
+## maybe forward rolling CV?
+# -> Time Series Split Cross-Validation
+# -> see https://stats.stackexchange.com/questions/14099/using-k-fold-cross-validation-for-time-series-model-selection
+# -> also https://scikit-learn.org/stable/auto_examples/model_selection/plot_cv_indices.html#sphx-glr-auto-examples-model-selection-plot-cv-indices-py
+
+# punkweise vergleich
+
+## maybe only rely on fit criteria? BIC, leave LOOCV 
