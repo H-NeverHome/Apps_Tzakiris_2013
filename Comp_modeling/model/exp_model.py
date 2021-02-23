@@ -100,10 +100,12 @@ def VIEW_INDIPENDENTxCONTEXT(data, cv_trial, params):
                     history_answer.append(p_no)
                 action_CV_L.append(action)
             # if model at specified holdout trial
-            elif (cv_trial == trial):  
-                # impute action via binom var using p_yes prob
-                action_CV = np.random.binomial(1,np.around(p_yes,decimals=5),1)[0]
-                action_CV_L.append(action_CV)
+            elif (cv_trial == trial): 
+                None
+                
+                # # impute action via binom var using p_yes prob
+                # action_CV = np.random.binomial(1,np.around(p_yes,decimals=5),1)[0]
+                # action_CV_L.append(action_CV)
 
             
     model_evidence = np.log(history_answer).sum()
@@ -284,7 +286,7 @@ for vpn in unique_id[0:1]:
     data_ALL_verbose[-1] = True
     
     
-    final_data_data = []
+    cv_score_list = []
     
 
         
@@ -302,84 +304,57 @@ for vpn in unique_id[0:1]:
     
     # plugin opt params and verbose
     verbose_M1 = VIEW_INDIPENDENTxCONTEXT(data_ALL_verbose, None, res_M1[0])
-        
+    opt_norm_LL = np.log(np.array(verbose_M1[1]['model_internals']['answer_prob']))        
     # define holdout trials by iteration
     res_verbose = []
     
-    cv_trials = [i for i in range(len(VPN_output))][1::]
-    for trial_rl_cv in cv_trials:
+    #cv_trials = [i for i in range(len(VPN_output))][1::]
+    for trial_rl_cv in range(len(VPN_output)):
     #for trials_CV in range(len(VPN_output)):
-        #print(trials_CV)
-        
-            # get data
-        stim_IDs_VI=    np.array(curr_data_vpn['stim_IDs_VI'])[0:trial_rl_cv-1]  #stimulus IDs of winning model 
-        new_ID=         np.array(curr_data_vpn['new_IDs'])[0:trial_rl_cv-1]     #trials where new ID is introduced 
-        n_prev_pres=    np.array(curr_data_vpn['n_prev_VI'])[0:trial_rl_cv-1]    #number_of_prev_presentations
-        stim_IDs_VD=    np.array(curr_data_vpn['stim_IDs_VD'])[0:trial_rl_cv-1]  #view dependent
-        VPN_output =    np.array(curr_data_vpn['answer'])[0:trial_rl_cv-1]       #VPN answers
-        verbose =       False
-        
-        data_roll_CV = [VPN_output.astype(int), 
-                        new_ID.astype(int), 
-                        n_prev_pres.astype(int), 
-                        stim_IDs_VI, 
-                        stim_IDs_VD, 
-                        verbose]
-        
-        
-        #### roll CV
-        part_func_M1_CV = partial(VIEW_INDIPENDENTxCONTEXT, data_roll_CV, None)
+        print(trial_rl_cv)        
+
+        ##### optimize model CV
+        # do not evaluate current CV_trial, opt params
+        part_func_M1_CV = partial(VIEW_INDIPENDENTxCONTEXT, data_ALL, trial_rl_cv)
         
         res_M1_CV = optimize.fmin_l_bfgs_b(part_func_M1_CV,
                                       approx_grad = True,
                                       bounds = bounds_M1, 
                                       x0 = [x_0_bfgs for i in range(len(bounds_M1))],
-                                      epsilon=epsilon_param)        
+                                      epsilon=epsilon_param)
         
-        verbose_M1_CV = VIEW_INDIPENDENTxCONTEXT(data_ALL_verbose, None, res_M1_CV[0])
-        
-        roll_cv = np.log(np.array(verbose_M1[1]['model_internals']['answer_prob']))
-        # ##### optimize model CV
-        # # do not evaluate current CV_trial, opt params
-        # part_func_M1_CV = partial(VIEW_INDIPENDENTxCONTEXT, data_ALL, trials_CV)
-        
-        # res_M1_CV = optimize.fmin_l_bfgs_b(part_func_M1_CV,
-        #                               approx_grad = True,
-        #                               bounds = bounds_M1, 
-        #                               x0 = [x_0_bfgs for i in range(len(bounds_M1))],
-        #                               epsilon=epsilon_param)
-        
-        # #plugin opt params and evaluate model, get imputed data
-        # verbose_M1_CV = VIEW_INDIPENDENTxCONTEXT(data_ALL_verbose, trials_CV, res_M1_CV[0])
+        #plugin opt params and evaluate model, get imputed data
+        verbose_M1_CV = VIEW_INDIPENDENTxCONTEXT(data_ALL_verbose, trial_rl_cv, res_M1_CV[0])
         
         
         # data_ALL_CV = [verbose_M1_CV[1]['model_internals']['action_CV'], # insert imputed data
-        #                new_ID.astype(int), 
-        #                n_prev_pres.astype(int), 
-        #                stim_IDs_VI, 
-        #                stim_IDs_VD, 
-        #                True]
+        #                 new_ID.astype(int), 
+        #                 n_prev_pres.astype(int), 
+        #                 stim_IDs_VI, 
+        #                 stim_IDs_VD, 
+        #                 True]
         
-        # ##### evaluate imputed data with in CV procedure optimized params
-        # expl_res_CV = VIEW_INDIPENDENTxCONTEXT(data_ALL_CV, None, res_M1_CV[0])
+        ##### evaluate imputed data with in CV procedure optimized params
+        expl_res_CV = VIEW_INDIPENDENTxCONTEXT(data_ALL_verbose, None, res_M1_CV[0])
         
-        # #access LL of the CV_trial and store
-        # cv_score_log = np.log(expl_res_CV[1]['model_internals']['answer_prob'][trials_CV])
+        #access LL of the CV_trial and store
+        cv_score_log = np.log(expl_res_CV[1]['model_internals']['answer_prob'][trial_rl_cv])
         
-        # final_data_data.append(cv_score_log)
+
+        cv_score_list.append(cv_score_log)
         
-        
-        # res_total_fin = {'opt_model_norm': verbose_M1,
-        #                  'opt_model_CV': verbose_M1_CV,
-        #                  'eval_CV': expl_res_CV,
-        #                  'CV_score': cv_score_log}
-        # res_verbose.append(res_total_fin)
-    #TODO Wrong results
-    opt_norm_LL = np.log(np.array(verbose_M1[1]['model_internals']['answer_prob']))
-    res_all.append({'LOOCV_score':np.sum(final_data_data),
-                    'LOOCV_score_L':final_data_data,
+        res_total_fin = {'opt_model_norm': verbose_M1,
+                          'opt_model_CV': verbose_M1_CV,
+                          'eval_CV': expl_res_CV,
+                          'CV_score': cv_score_log}
+        res_verbose.append(res_total_fin)
+    
+    #results
+    res_all.append({'LOOCV_score':np.sum(cv_score_list),
+                    'norm_LL_score': np.array(opt_norm_LL).sum(),
+                    'LOOCV_score_L':cv_score_list,
                     'opt_norm_LL': opt_norm_LL,
-                    'diff_LL' : np.abs(np.array(opt_norm_LL).round(3)-np.array(final_data_data).round(3)),
+                    'diff_LL' : np.abs(np.array(opt_norm_LL).round(3)-np.array(cv_score_list).round(3)),
                     'data': VPN_output,
                     'normal_opt': verbose_M1})   
 
@@ -393,6 +368,6 @@ for vpn in unique_id[0:1]:
 # -> see https://stats.stackexchange.com/questions/14099/using-k-fold-cross-validation-for-time-series-model-selection
 # -> also https://scikit-learn.org/stable/auto_examples/model_selection/plot_cv_indices.html#sphx-glr-auto-examples-model-selection-plot-cv-indices-py
 
-# punkweise vergleich
+# punktweise vergleich
 
 ## maybe only rely on fit criteria? BIC, leave LOOCV 

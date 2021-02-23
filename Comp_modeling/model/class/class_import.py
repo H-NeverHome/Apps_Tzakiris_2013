@@ -6,6 +6,11 @@ Created on Tue Feb 16 10:10:21 2021
 """
 
 
+### TODO
+# -> Implement CV -> EXP_Model+
+# -> Implement time agn LR with joblib
+# -> 
+
 
 class Apps_Tsakiris_2013:
     def __init__(self,data_path, ground_truth_file,path_to_modelfunc):
@@ -118,10 +123,7 @@ class Apps_Tsakiris_2013:
         from model_functions import VIEW_INDIPENDENTxCONTEXT,VIEW_DEPENDENT,VIEW_DEPENDENTxCONTEXT_DEPENDENT
         from model_functions import VIEW_INDEPENDENT, VIEW_INDEPENDENTxVIEW_DEPENDENT
         from model_functions import VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT
-        
-        
-        
-        
+
         import pandas as pd
         import numpy as np
         from functools import partial
@@ -181,6 +183,8 @@ class Apps_Tsakiris_2013:
             VPN_output =    np.array(curr_data_vpn['answer'])       #VPN answers
             verbose =       False
 
+            #data_All = [VPN_output, new_ID, numb_prev_presentations, stim_IDs_VI,stim_IDs_VD,verbose]
+
             data_ALL = [VPN_output.astype(int), 
                         new_ID.astype(int), 
                         n_prev_pres.astype(int), 
@@ -190,15 +194,14 @@ class Apps_Tsakiris_2013:
 
             
             
-            ##### Model Optim
+            ########## Model Optim
             
             i=vpn
             print('VIEW_INDIPENDENTxCONTEXT')
-            #data_M1 = [VPN_output, new_ID, numb_prev_presentations, stim_IDs,verbose]
     
             bounds_M1 = [(0,1),(0,1),(.1,20),(0,2)]
             
-            part_func_M1 = partial(VIEW_INDIPENDENTxCONTEXT,data_ALL) 
+            part_func_M1 = partial(VIEW_INDIPENDENTxCONTEXT,data_ALL,None) 
             res1 = optimize.fmin_l_bfgs_b(part_func_M1,
                                           approx_grad = True,
                                           bounds = bounds_M1, 
@@ -206,16 +209,12 @@ class Apps_Tsakiris_2013:
                                           epsilon=epsilon_param)
             parameter_est['VIEW_INDIPENDENTxCONTEXT'][i] = res1[0]
             
-            
+            ##### VIEW_DEPENDENT
             print('VIEW_DEPENDENT')
-            
-            #data = [VPN_output, new_ID, stim_IDs, stim_IDs_perspective, verbose]    
-            #data_M2 = [VPN_output, new_ID, stim_IDs, stim_IDs_perspective, verbose]
-    
-        
+                    
             bounds_M2 = [(0,1),(.1,20),(0,2)]
             
-            part_func_M2 = partial(VIEW_DEPENDENT,data_ALL) 
+            part_func_M2 = partial(VIEW_DEPENDENT,data_ALL,None) 
             res2 = optimize.fmin_l_bfgs_b(part_func_M2,
                                           approx_grad = True,
                                           bounds = bounds_M2, 
@@ -224,15 +223,12 @@ class Apps_Tsakiris_2013:
             
             parameter_est['VIEW_DEPENDENT'][i] = res2[0]
             
-            
+            ##### VIEW_DEPENDENTxCONTEXT_DEPENDENT
             print('VIEW_DEPENDENTxCONTEXT_DEPENDENT')
-    
-            #data = [VPN_output, new_ID, stim_IDs, stim_IDs_perspective, verbose]    
-            
-            #data_M3 = [VPN_output, new_ID, stim_IDs, stim_IDs_perspective, verbose]
+
             bounds_M3 = [(0,1),(0,1),(.1,20),(0,2)]
         
-            part_func_M3 = partial(VIEW_DEPENDENTxCONTEXT_DEPENDENT,data_ALL) 
+            part_func_M3 = partial(VIEW_DEPENDENTxCONTEXT_DEPENDENT,data_ALL,None) 
             res3 = optimize.fmin_l_bfgs_b(part_func_M3,
                                           approx_grad = True,
                                           bounds = bounds_M3, 
@@ -240,14 +236,12 @@ class Apps_Tsakiris_2013:
                                           epsilon=epsilon_param)
             parameter_est['VIEW_DEPENDENTxCONTEXT_DEPENDENT'][i] = res3[0]
             
+            ##### VIEW_INDEPENDENT
             print('VIEW_INDEPENDENT')
     
-            #data = [VPN_output, new_ID, numb_prev_presentations, stim_IDs,verbose]
-        
-            #data_M4 = [VPN_output, new_ID, numb_prev_presentations, stim_IDs,verbose]
             bounds_M4 = [(0,1),(.1,20),(0,2)]
         
-            part_func_M4 = partial(VIEW_INDEPENDENT,data_ALL) 
+            part_func_M4 = partial(VIEW_INDEPENDENT,data_ALL,None) 
             res4 = optimize.fmin_l_bfgs_b(part_func_M4,
                                           approx_grad = True,
                                           bounds = bounds_M4, 
@@ -255,16 +249,12 @@ class Apps_Tsakiris_2013:
                                           epsilon=epsilon_param)
             parameter_est['VIEW_INDEPENDENT'][i] = res4[0]
             
-            
+            ##### VIEW_INDEPENDENTxVIEW_DEPENDENT
             print('VIEW_INDEPENDENTxVIEW_DEPENDENT')
-            
-            #data = [ VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose]
-        
-        
-            #data_M5 = [VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose]
+                    
             bounds_M5 = [(0,1),(0,1),(.1,20),(0,2),(0,2)]
         
-            part_func_M5 = partial(VIEW_INDEPENDENTxVIEW_DEPENDENT,data_ALL) 
+            part_func_M5 = partial(VIEW_INDEPENDENTxVIEW_DEPENDENT,data_ALL,None) 
             res5 = optimize.fmin_l_bfgs_b(part_func_M5,
                                           approx_grad = True,
                                           bounds = bounds_M5, 
@@ -272,15 +262,13 @@ class Apps_Tsakiris_2013:
                                           epsilon=epsilon_param)
             parameter_est['VIEW_INDEPENDENTxVIEW_DEPENDENT'][i] = res5[0]
             
-    
+            ##### VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT
             print('VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT')
-            params_M6_name = ['alpha_ind', 'alpha_dep', 'sigma', 'beta', 'lamd_a_ind', 'lamd_a_dep']
-            #data = [VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose]
+            #params_M6_name = ['alpha_ind', 'alpha_dep', 'sigma', 'beta', 'lamd_a_ind', 'lamd_a_dep']
         
-            #data_M6 = [VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose]
             bounds_M6 = [(0,1),(0,1),(0,1),(.1,20),(0,2),(0,2)]
         
-            part_func_M6 = partial(VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT,data_ALL) 
+            part_func_M6 = partial(VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT,data_ALL,None) 
             res6 = optimize.fmin_l_bfgs_b(part_func_M6,
                                           approx_grad = True,
                                           bounds = bounds_M6, 
@@ -312,27 +300,27 @@ class Apps_Tsakiris_2013:
     
                 # = data_M_debug[0]
                 params_m_1 = res1[0]
-                m_1 = VIEW_INDIPENDENTxCONTEXT(data_ALL_debug, params_m_1)
+                m_1 = VIEW_INDIPENDENTxCONTEXT(data_ALL_debug,None,params_m_1)
                 
                 #data_M2_debug = data_M_debug[1]
                 params_m_2 = res2[0]
-                m_2 = VIEW_DEPENDENT(data_ALL_debug, params_m_2)
+                m_2 = VIEW_DEPENDENT(data_ALL_debug,None, params_m_2)
             
                 #data_M3_debug = data_M_debug[2]
                 params_m_3 = res3[0]
-                m_3 = VIEW_DEPENDENTxCONTEXT_DEPENDENT(data_ALL_debug, params_m_3)
+                m_3 = VIEW_DEPENDENTxCONTEXT_DEPENDENT(data_ALL_debug,None, params_m_3)
                 
                 #ädata_M4_debug = data_M_debug[3]
                 params_m_4 = res4[0]
-                m_4 = VIEW_INDEPENDENT(data_ALL_debug, params_m_4)
+                m_4 = VIEW_INDEPENDENT(data_ALL_debug,None, params_m_4)
             
                 #data_M5_debug = data_M_debug[4]
                 params_m_5 = res5[0]
-                m_5 = VIEW_INDEPENDENTxVIEW_DEPENDENT(data_ALL_debug, params_m_5)
+                m_5 = VIEW_INDEPENDENTxVIEW_DEPENDENT(data_ALL_debug,None, params_m_5)
                 
                 #data_M6_debug = data_M_debug[5]
                 params_m_6 = res6[0]
-                m_6 = VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT(data_ALL_debug, params_m_6)
+                m_6 = VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT(data_ALL_debug,None, params_m_6)
         
                 res_debug = {models_names[0]: m_1,
                              models_names[1]: m_2,
@@ -343,9 +331,8 @@ class Apps_Tsakiris_2013:
                 data_verbose_debug[i] = res_debug
                 
         #### Get winning model trialwise dat ####
-            #data_M1_debug = data_ALL_debug[0]
             params_m_1 = res1[0]
-            res_M1 = VIEW_INDIPENDENTxCONTEXT(data_ALL_debug, params_m_1)        
+            res_M1 = VIEW_INDIPENDENTxCONTEXT(data_ALL_debug,None, params_m_1)        
     
             trialwise_data[i] = res_M1[1]['data_store_1']
         restotal = res_evidence.sum(axis=1)
@@ -364,6 +351,286 @@ class Apps_Tsakiris_2013:
             return (results_1,restotal,data_verbose_debug)
         elif verbose_tot==False:
             return results_1
+
+    def fit_data_combined(self):
+        
+        import os
+        os.chdir(self.path_to_modelfunctions)
+        
+        from model_functions import VIEW_INDIPENDENTxCONTEXT,VIEW_DEPENDENT,VIEW_DEPENDENTxCONTEXT_DEPENDENT
+        from model_functions import VIEW_INDEPENDENT, VIEW_INDEPENDENTxVIEW_DEPENDENT
+        from model_functions import VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT
+               
+    
+        from tqdm import tqdm
+        import pandas as pd
+        import numpy as np
+        from functools import partial
+        from scipy import optimize,special
+        np.random.seed(1993)
+        ### Get data 
+        data_unform = self.clean_data 
+        data_A = data_unform['A']
+        data_B = data_unform['B']
+        #data_AB = {**data_A,**data_B}
+        #### get unique IDS
+        unique_id_t1 = list(data_A.keys())
+        unique_id_t2 = list(data_B.keys())
+        
+        sample_answer_clms_t1 = [i+'_answer' for i in unique_id_t1]
+        sample_answer_clms_t2 = [i+'_answer' for i in unique_id_t2]
+        
+        sample_perspective_clms = [i+'_perspective' for i in unique_id_t1]
+        sample_perspective_clms = [i+'_perspective' for i in unique_id_t2]
+        
+        epsilon_param = 0.01
+        x_0_bfgs = 0.5
+        params_M1_name = ['alpha', 'sigma', 'beta', 'lamd_a'] 
+        params_M2_name = ['alpha', 'beta', 'lamd_a']
+        params_M3_name = ['alpha', 'sigma', 'beta', 'lamd_a']
+        params_M4_name = ['alpha', 'beta', 'lamd_a']
+        params_M5_name = ['alpha_ind', 'alpha_dep', 'beta', 'lamd_a_ind', 'lamd_a_dep']
+        params_M6_name = ['alpha_ind', 'alpha_dep', 'sigma', 'beta', 'lamd_a_ind', 'lamd_a_dep']
+    
+        models_names = ['VIEW_INDIPENDENTxCONTEXT',
+                        'VIEW_DEPENDENT',
+                        'VIEW_DEPENDENTxCONTEXT_DEPENDENT',
+                        'VIEW_INDEPENDENT',
+                        'VIEW_INDEPENDENTxVIEW_DEPENDENT',
+                        'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT',
+                        'random_choice']
+        
+        parameter_est = {'VIEW_INDIPENDENTxCONTEXT': pd.DataFrame(index=params_M1_name),
+                        'VIEW_DEPENDENT': pd.DataFrame(index=params_M2_name),
+                        'VIEW_DEPENDENTxCONTEXT_DEPENDENT': pd.DataFrame(index=params_M3_name),
+                        'VIEW_INDEPENDENT': pd.DataFrame(index=params_M4_name),
+                        'VIEW_INDEPENDENTxVIEW_DEPENDENT': pd.DataFrame(index=params_M5_name),
+                        'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT': pd.DataFrame(index=params_M6_name)
+                            }
+        data_verbose_debug = {}
+        res_evidence = pd.DataFrame(index=models_names)
+        trialwise_data = {}
+        bf_log_group = pd.DataFrame()
+        
+        for vpn_t1,vpn_t2 in zip(unique_id_t1,unique_id_t2):
+            print(vpn_t1,vpn_t2)
+            #func calls & rand starts
+            
+            curr_data_vpn_t1 = data_A[vpn_t1]
+            curr_data_vpn_t2 = data_B[vpn_t2]
+            # data import
+            stim_ID_t1 = curr_data_vpn_t1['stim_IDs_VI'] #stimulus IDs of winning model
+            stim_ID_t2 = curr_data_vpn_t2['stim_IDs_VI'] #stimulus IDs of winning model
+            
+            new_ID_t1 = curr_data_vpn_t1['new_IDs'] #trials where new ID is introduced 
+            new_ID_t2 = curr_data_vpn_t2['new_IDs'] #trials where new ID is introduced 
+
+            numb_prev_presentations_t1 = curr_data_vpn_t1['n_prev_VI'] #number_of_prev_presentations/view independent
+            numb_prev_presentations_t2 = curr_data_vpn_t2['n_prev_VI'] #number_of_prev_presentations/view independent            
+            
+            stim_IDs_VD_t1 = curr_data_vpn_t1['stim_IDs_VD'] #view dependent IDs
+            stim_IDs_VD_t2 = curr_data_vpn_t2['stim_IDs_VD'] #view dependent IDs
+            
+            stim_IDs_VI_t1 = curr_data_vpn_t1['stim_IDs_VI'] #view independent IDs
+            stim_IDs_VI_t2 = curr_data_vpn_t2['stim_IDs_VI'] #view independent IDs
+            
+            VPN_output_t1 = curr_data_vpn_t1['answer'] #VPN answers
+            VPN_output_t2  = curr_data_vpn_t2['answer'] #VPN answers
+            verbose = False
+            
+            # data_ALL = [VPN_output.astype(int), 
+            #             new_ID.astype(int), 
+            #             n_prev_pres.astype(int), 
+            #             stim_IDs_VI, 
+            #             stim_IDs_VD, 
+            #             verbose]  
+            data_ALL_T1 = [VPN_output_t1,
+                           new_ID_t1,
+                           numb_prev_presentations_t1,
+                           stim_IDs_VI_t1,
+                           stim_IDs_VD_t1, 
+                           verbose]
+            data_ALL_T2 = [VPN_output_t2,
+                           new_ID_t2, 
+                           numb_prev_presentations_t2, 
+                           stim_IDs_VI_t2, 
+                           stim_IDs_VD_t2, 
+                           verbose]
+
+            #################### Model Optim      
+            #i=vpn
+    ####################  VIEW_INDIPENDENTxCONTEXT     ####################        
+            def VIEW_INDIPENDENTxCONTEXT_t1_t2(data_M1_t1,data_M1_t2,params):
+               res1_t1 = VIEW_INDIPENDENTxCONTEXT(data_M1_t1,None,params)
+               res1_t2 = VIEW_INDIPENDENTxCONTEXT(data_M1_t2,None,params)                     
+               loss_t1 = res1_t1
+               loss_t2 = res1_t2
+               total_loss = loss_t1 + loss_t2
+               return total_loss
+           
+            data_M1_t1 = data_ALL_T1
+            data_M1_t2 = data_ALL_T2
+            part_func_M1_t1_t2 = partial(VIEW_INDIPENDENTxCONTEXT_t1_t2,data_M1_t1,data_M1_t2) 
+            bounds_M1= [(0,1),(0,1),(.1,20),(0,2)]
+            res1_t1_t2 = optimize.fmin_l_bfgs_b(part_func_M1_t1_t2,
+                                          approx_grad = True,
+                                          bounds = bounds_M1, 
+                                          x0 = [x_0_bfgs for i in range(len(bounds_M1))],
+                                          epsilon=epsilon_param)
+    
+            parameter_est['VIEW_INDIPENDENTxCONTEXT'][vpn_t1 + vpn_t2] = res1_t1_t2[0] 
+    
+        
+    ####################  VIEW_DEPENDENT    ####################       
+            def VIEW_DEPENDENT_t1_t2(data_M2_t1,data_M1_t2,params):
+               res1_t1 = VIEW_DEPENDENT(data_M2_t1,None,params)
+               res1_t2 = VIEW_DEPENDENT(data_M2_t1,None,params)                     
+               loss_t1 = res1_t1
+               loss_t2 = res1_t2
+               total_loss = loss_t1 + loss_t2
+               return total_loss
+            
+            #data = [VPN_output, new_ID, stim_IDs, stim_IDs_perspective, verbose]    
+            data_M2_t1 = data_ALL_T1
+            data_M2_t2 = data_ALL_T2
+    
+        
+            bounds_M2 = [(0,1),(.1,20),(0,2)]
+            part_func_M2_t1_t2 = partial(VIEW_DEPENDENT_t1_t2,data_M2_t1,data_M2_t2)
+            #part_func_M2 = partial(VIEW_DEPENDENT,data_M2) 
+            res2_t1_t2  = optimize.fmin_l_bfgs_b(part_func_M2_t1_t2,
+                                          approx_grad = True,
+                                          bounds = bounds_M2, 
+                                          x0 = [x_0_bfgs for i in range(len(bounds_M2))],
+                                          epsilon=epsilon_param)
+            
+            parameter_est['VIEW_DEPENDENT'][vpn_t1 + vpn_t2] = res2_t1_t2[0]
+    
+    # ####################  VIEW_DEPENDENTxCONTEXT_DEPENDENT    ####################       
+    
+            def VIEW_DEPENDENTxCONTEXT_DEPENDENT_t1_t2(data_M3_t1,data_M3_t2,params):
+               res1_t1 = VIEW_DEPENDENTxCONTEXT_DEPENDENT(data_M3_t1,None,params)
+               res1_t2 = VIEW_DEPENDENTxCONTEXT_DEPENDENT(data_M3_t2,None,params)                     
+               loss_t1 = res1_t1
+               loss_t2 = res1_t2
+               total_loss = loss_t1 + loss_t2
+               return total_loss
+            data_M3_t1 = data_ALL_T1
+            data_M3_t2 = data_ALL_T2
+     
+            
+            bounds_M3 = [(0,1),(0,1),(.1,20),(0,2)]
+        
+            part_func_M3_t1_t2  = partial(VIEW_DEPENDENTxCONTEXT_DEPENDENT_t1_t2,
+                                    data_M3_t1,
+                                    data_M3_t2) 
+            res3_t1_t2 = optimize.fmin_l_bfgs_b(part_func_M3_t1_t2,
+                                          approx_grad = True,
+                                          bounds = bounds_M3, 
+                                          x0 = [x_0_bfgs for i in range(len(bounds_M3))],
+                                          epsilon=epsilon_param)
+    
+            parameter_est['VIEW_DEPENDENTxCONTEXT_DEPENDENT'][vpn_t1 + vpn_t2] = res3_t1_t2[0]
+    
+    
+    # ####################  VIEW_INDEPENDENT    #################### 
+    
+            def VIEW_INDEPENDENT_t1_t2(data_M4_t1,data_M4_t2,params):
+               res1_t1 = VIEW_INDEPENDENT(data_M4_t1,None,params)
+               res1_t2 = VIEW_INDEPENDENT(data_M4_t2,None,params)                     
+               loss_t1 = res1_t1
+               loss_t2 = res1_t2
+               total_loss = loss_t1 + loss_t2
+               return total_loss
+    
+            data_M4_t1 = data_ALL_T1
+            data_M4_t2 = data_ALL_T2
+    
+            bounds_M4 = [(0,1),(.1,20),(0,2)]
+        
+            part_func_M4_t1_t2 = partial(VIEW_INDEPENDENT_t1_t2,data_M4_t1,data_M4_t2) 
+            res4_t1_t2 = optimize.fmin_l_bfgs_b(part_func_M4_t1_t2,
+                                          approx_grad = True,
+                                          bounds = bounds_M4, 
+                                          x0 = [x_0_bfgs for i in range(len(bounds_M4))],
+                                          epsilon=epsilon_param)
+            parameter_est['VIEW_INDEPENDENT'][vpn_t1 + vpn_t2] = res4_t1_t2[0]
+    
+     
+    # ####################  VIEW_INDEPENDENTxVIEW_DEPENDENT    #################### 
+    
+            def VIEW_INDEPENDENTxVIEW_DEPENDENT_t1_t2(data_M5_t1,data_M5_t2,params):
+               res1_t1 = VIEW_INDEPENDENTxVIEW_DEPENDENT(data_M5_t1,None,params)
+               res1_t2 = VIEW_INDEPENDENTxVIEW_DEPENDENT(data_M5_t2,None,params)                     
+               loss_t1 = res1_t1
+               loss_t2 = res1_t2
+               total_loss = loss_t1 + loss_t2
+               return total_loss
+    
+            data_M5_t1 = data_ALL_T1
+            data_M5_t2 = data_ALL_T2
+    
+            bounds_M5 = [(0,1),(0,1),(.1,20),(0,2),(0,2)]
+        
+            part_func_M5_t1_t2 = partial(VIEW_INDEPENDENTxVIEW_DEPENDENT_t1_t2,data_M5_t1,data_M5_t2) 
+            res5_t1_t2 = optimize.fmin_l_bfgs_b(part_func_M5_t1_t2,
+                                          approx_grad = True,
+                                          bounds = bounds_M5, 
+                                          x0 = [x_0_bfgs for i in range(len(bounds_M5))],
+                                          epsilon=epsilon_param)
+            parameter_est['VIEW_INDEPENDENTxVIEW_DEPENDENT'][vpn_t1 + vpn_t2] = res5_t1_t2[0]
+            
+    
+            
+    # ####################  VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT    #################### 
+    
+            def VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT_t1_t2(data_M6_t1,data_M6_t2,params):
+               res1_t1 = VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT(data_M6_t1,None,params)
+               res1_t2 = VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT(data_M6_t2,None,params)                     
+               loss_t1 = res1_t1
+               loss_t2 = res1_t2
+               total_loss = loss_t1 + loss_t2
+               return total_loss
+    
+            data_M6_t1 = data_ALL_T1
+            data_M6_t2 = data_ALL_T2
+    
+            bounds_M6 = [(0,1),(0,1),(0,1),(.1,20),(0,2),(0,2)]
+        
+            part_func_M6_t1_t2  = partial(VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT_t1_t2,
+                                          data_M6_t1,
+                                          data_M6_t2) 
+            res6_t1_t2  = optimize.fmin_l_bfgs_b(part_func_M6_t1_t2,
+                                          approx_grad = True,
+                                          bounds = bounds_M6, 
+                                          x0 = [x_0_bfgs for i in range(len(bounds_M6))],
+                                          epsilon=epsilon_param)
+            
+            #parameter_est['VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT'][i] = res6[0]
+    
+    # ####################  Random Choice #################### 
+            def rnf_choice(VPN_output_t1,VPN_output_t2):
+                n_trial_T1,n_trial_T2 = len(VPN_output_t1),len(VPN_output_t2)
+                loss_T1 = np.sum([np.log(0.5) for i in range(n_trial_T1)])
+                loss_T2 = np.sum([np.log(0.5) for i in range(n_trial_T2)])
+                total_loss = loss_T1+loss_T2
+                return total_loss
+        
+            rnd_choice_t1_t2 = rnf_choice(VPN_output_t1,VPN_output_t2)
+            res_total = [res1_t1_t2,
+                         res2_t1_t2,
+                         res3_t1_t2,
+                         res4_t1_t2,
+                         res5_t1_t2,
+                         res6_t1_t2]
+            re_evidence_subj = np.array([(-1*i[1]) for i in res_total]+[rnd_choice_t1_t2])
+    
+            res_evidence[vpn_t1 + vpn_t2] = re_evidence_subj   
+               
+        
+        
+        
+        return res_evidence
 
     def RFX_modelselection(self, fit_data):       
         import matlab.engine
@@ -510,7 +777,7 @@ class Apps_Tsakiris_2013:
         corr = pg.corr(corr_data_A, corr_data_B, tail='two-sided', method='pearson')
         
         res = {'icc': icc_2,
-              'corr': corr}  
+              'corr': corr}
         return res
     
     def model_selection_AT(self):
@@ -580,5 +847,69 @@ class Apps_Tsakiris_2013:
         return {'AT_model_selection_results_nparams': ll_dat,
                 'lambda_mult_model_selection':lmbda_mult,
                 'LR_fin': ll_fin}  
+
+    def corr_LR(self,fit_data_seperate):
         
+
+        import pandas as pd
+        import numpy as np
+        #get names
+        name_models_LR = [i for i in fit_data_seperate['subject_level_parameter-estimates']]
+        #get number of params
+        n_params = pd.DataFrame()
+        for i in name_models_LR:
+            n_par = fit_data_seperate['subject_level_parameter-estimates'][i].shape[0]
+            n_params[i] = [n_par]
+        #get number of subjects
+        n_subj = len([i for i in fit_data_seperate['subject_level_model_evidence']])
+            
+        res_lr_A = pd.DataFrame(index = ['lr','corr_lr','correction'])
+        res_lr_B = pd.DataFrame(index = ['lr','corr_lr','correction'])
+        group_ev = []
+        for time in ['A','B']:
+            curr_dat_raw = fit_data_seperate['subject_level_model_evidence']
+            curr_clmns = [i for i in list(curr_dat_raw.columns) if time in i]
+            curr_dat = curr_dat_raw[curr_clmns]
+            group_lvl_ev = curr_dat.sum(axis=1)
+            group_ev.append(group_lvl_ev)
+            for model_LR in name_models_LR[1::]:
+                #winning model
+                model_ev_win = np.array(group_lvl_ev[name_models_LR[0]])
+                model_ev_win_Nparam = np.array(n_params[name_models_LR[0]])
+                #control models
+                model_ev_cntrl = np.array(group_lvl_ev[model_LR])
+                model_ev_cntrl_Nparam = np.array(n_params[model_LR])
+                #uncorrected LR10
+                lr_uncorr = model_ev_win-model_ev_cntrl
+                #corrected LR10
+                exp_modelparam = np.exp(model_ev_win_Nparam-model_ev_cntrl_Nparam)
+                correction = np.log(exp_modelparam**(np.log(n_subj)/2))
+                corr_lr = lr_uncorr + correction
+                res_list = [float(lr_uncorr),float(corr_lr),float(correction)]
+                if time == 'A':
+                    res_lr_A[str(name_models_LR[0]) + '_vs_' + str(model_LR)] = res_list
+                elif time == 'B':
+                    res_lr_B[str(name_models_LR[0]) + '_vs_' + str(model_LR)] = res_list
+            used_data_lr = {'n_subj':n_subj,
+                         'n_params':n_params,
+                         'fit_data':fit_data_seperate}
+        return {'corr_lr_A':res_lr_A ,
+                'corr_lr_B':res_lr_B ,
+                'used_data':used_data_lr}
+            
+    
+    
+    
+        
+    def time_agn_LR(self):
+        ölkdasnlkjsdn,mfnlksdn
+        sdelö.gfmdslkngf
+        +sdölkgfnmlöksdm
+        dsgkölksdngfökl
+        sdjgfklnsdlkmf#
+        üsdlkfns
+        dfösdlmf
+        sdkf+äsd
+        flsdüälmgf
+        ä
  

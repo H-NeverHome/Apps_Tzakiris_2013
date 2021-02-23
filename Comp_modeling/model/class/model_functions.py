@@ -82,7 +82,7 @@ def view_dep_suppl_dat(stim_IDs_perspective):
 #data_ALL = [VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose]
 # verbose
 
-def VIEW_INDIPENDENTxCONTEXT(data,params):
+def VIEW_INDIPENDENTxCONTEXT(data,cv_trial,params):
     
     alpha = params[0]
     sigma = params[1]
@@ -145,10 +145,23 @@ def VIEW_INDIPENDENTxCONTEXT(data,params):
         #get answer prob
         p_yes,p_no = answer_prob(beta,totfam)
 
-        if action == 1:
-            history_answer.append(p_yes)
-        if action == 0:
-            history_answer.append(p_no)
+        # if no CV
+        if cv_trial is None:
+            if action == 1:
+                history_answer.append(p_yes)
+            if action == 0:
+                history_answer.append(p_no)
+        # if CV
+        elif (cv_trial is not None):
+            # if model not at specified holdout trial
+            if (cv_trial != trial):
+                if action == 1:
+                    history_answer.append(p_yes)
+                elif action == 0:
+                    history_answer.append(p_no)
+            # if model at specified holdout trial
+            elif (cv_trial == trial): 
+                None
             
     model_evidence = np.log(history_answer).sum()
     if verbose == False:
@@ -207,7 +220,7 @@ def VIEW_INDIPENDENTxCONTEXT_CV(params,old_vfam,old_cfam,action):
 #data_ALL = [VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose]
 
 
-def VIEW_DEPENDENT(data, params):
+def VIEW_DEPENDENT(data,cv_trial, params):
     alpha, beta, lamd_a = params[0], params[1], params[2]
     VPN_output, new_ID, stim_IDs, stim_IDs_perspective, verbose = data[0],data[1],data[3],data[4],data[5]
     
@@ -246,11 +259,23 @@ def VIEW_DEPENDENT(data, params):
         
         # get answer prob
         p_yes,p_no = answer_prob(beta,totfam)
-
-        if action == 1:
-            history_answer.append(p_yes)
-        if action == 0:
-            history_answer.append(p_no)
+        # if no CV
+        if cv_trial is None:
+            if action == 1:
+                history_answer.append(p_yes)
+            if action == 0:
+                history_answer.append(p_no)
+        # if CV
+        elif (cv_trial is not None):
+            # if model not at specified holdout trial
+            if (cv_trial != trial):
+                if action == 1:
+                    history_answer.append(p_yes)
+                elif action == 0:
+                    history_answer.append(p_no)
+            # if model at specified holdout trial
+            elif (cv_trial == trial): 
+                None
     model_evidence = np.log(history_answer).sum()
     if verbose == True:
         data_store = {'history_answer': history_answer,
@@ -290,7 +315,7 @@ def VIEW_DEPENDENT_CV(params, old_fam, action):
 
 
 
-def VIEW_DEPENDENTxCONTEXT_DEPENDENT(data, params):
+def VIEW_DEPENDENTxCONTEXT_DEPENDENT(data,cv_trial, params):
     
     # Data & Parameter
     alpha, sigma, beta, lamd_a = params[0], params[1], params[2], params[3],
@@ -337,11 +362,23 @@ def VIEW_DEPENDENTxCONTEXT_DEPENDENT(data, params):
 
         #get answer prob
         p_yes,p_no = answer_prob(beta,totfam)
-        
-        if action == 1:
-            history_answer.append(p_yes)
-        if action == 0:
-            history_answer.append(p_no)
+        # if no CV
+        if cv_trial is None:
+            if action == 1:
+                history_answer.append(p_yes)
+            if action == 0:
+                history_answer.append(p_no)
+        # if CV
+        elif (cv_trial is not None):
+            # if model not at specified holdout trial
+            if (cv_trial != trial):
+                if action == 1:
+                    history_answer.append(p_yes)
+                elif action == 0:
+                    history_answer.append(p_no)
+            # if model at specified holdout trial
+            elif (cv_trial == trial): 
+                None
     model_evidence = np.log(history_answer).sum()
     data_store = {'history_answer': history_answer,
                   'history_V_dep': history_V_dep,
@@ -391,7 +428,7 @@ def VIEW_DEPENDENTxCONTEXT_DEPENDENT_CV(params, old_Vfam_dep, old_c, action):
 #data_ALL = [VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose]
 
 
-def VIEW_INDEPENDENT(data, params):
+def VIEW_INDEPENDENT(data, cv_trial, params):
     
     VPN_output, new_ID, numb_prev_presentations, stim_IDs, verbose = data[0],data[1],data[2],data[3],data[5]
     alpha, beta, lamd_a = params[0], params[1], params[2],
@@ -424,11 +461,23 @@ def VIEW_INDEPENDENT(data, params):
     
         #get answer prob
         p_yes,p_no = answer_prob(beta,totfam)
-
-        if action == 1:
-            history_answer.append(p_yes)
-        if action == 0:
-            history_answer.append(p_no)
+        # if no CV
+        if cv_trial is None:
+            if action == 1:
+                history_answer.append(p_yes)
+            if action == 0:
+                history_answer.append(p_no)
+        # if CV
+        elif (cv_trial is not None):
+            # if model not at specified holdout trial
+            if (cv_trial != trial):
+                if action == 1:
+                    history_answer.append(p_yes)
+                elif action == 0:
+                    history_answer.append(p_no)
+            # if model at specified holdout trial
+            elif (cv_trial == trial): 
+                None
     model_evidence = np.log(history_answer).sum()
     data_store = {'history_answer': history_answer,
                   'history_V': history_V,
@@ -469,7 +518,7 @@ def VIEW_INDEPENDENT_CV(params, old_Vfam, action):
 #params = [alpha_ind, alpha_dep, beta, lamd_a_ind, lamd_a_dep]
 #data_ALL = [VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose]
 
-def VIEW_INDEPENDENTxVIEW_DEPENDENT(data, params):
+def VIEW_INDEPENDENTxVIEW_DEPENDENT(data, cv_trial, params):
     alpha_ind, alpha_dep, beta, lamd_a_ind, lamd_a_dep = params[0], params[1],params[2],params[3],params[4],
     VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose = data[0],data[1],data[2],data[3],data[4],data[5]
     
@@ -514,11 +563,23 @@ def VIEW_INDEPENDENTxVIEW_DEPENDENT(data, params):
     
         #get answer prob
         p_yes,p_no = answer_prob(beta,totfam)
-
-        if action == 1:
-            history_answer.append(p_yes)
-        if action == 0:
-            history_answer.append(p_no)
+        # if no CV
+        if cv_trial is None:
+            if action == 1:
+                history_answer.append(p_yes)
+            if action == 0:
+                history_answer.append(p_no)
+        # if CV
+        elif (cv_trial is not None):
+            # if model not at specified holdout trial
+            if (cv_trial != trial):
+                if action == 1:
+                    history_answer.append(p_yes)
+                elif action == 0:
+                    history_answer.append(p_no)
+            # if model at specified holdout trial
+            elif (cv_trial == trial): 
+                None
     model_evidence = np.log(history_answer).sum()
     data_store = {'history_answer': history_answer,
                   'history_V_depend': history_V_depend,
@@ -565,7 +626,7 @@ def VIEW_INDEPENDENTxVIEW_DEPENDENT_CV(params,old_fam_depend,old_fam_indipend, a
 #params = [alpha_ind, alpha_dep, sigma, beta, lamd_a_ind, lamd_a_dep]
 #data_ALL = [VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose]
     
-def VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT(data, params):
+def VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT(data,cv_trial, params):
     alpha_ind, alpha_dep, sigma, beta, lamd_a_ind, lamd_a_dep = params[0], params[1],params[2],params[3],params[4],params[5]
     VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose = data[0], data[1], data[2], data[3], data[4], data[5]
     
@@ -618,10 +679,23 @@ def VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT(data, params):
         #get answer prob
         p_yes,p_no = answer_prob(beta,totfam)
 
-        if action == 1:
-            history_answer.append(p_yes)
-        if action == 0:
-            history_answer.append(p_no)
+        # if no CV
+        if cv_trial is None:
+            if action == 1:
+                history_answer.append(p_yes)
+            if action == 0:
+                history_answer.append(p_no)
+        # if CV
+        elif (cv_trial is not None):
+            # if model not at specified holdout trial
+            if (cv_trial != trial):
+                if action == 1:
+                    history_answer.append(p_yes)
+                elif action == 0:
+                    history_answer.append(p_no)
+            # if model at specified holdout trial
+            elif (cv_trial == trial): 
+                None
             
     model_evidence = np.log(history_answer).sum()
     data_store = {'history_answer': history_answer,
