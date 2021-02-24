@@ -74,22 +74,22 @@ for ids in ids_t1_t2_joblib:
 if __name__ == '__main__':   
     results123 = Parallel(n_jobs=8,verbose=50)(delayed(fit_data_CV_mult)(i) for i in data_job)    
 
-resCV_A = [i[[i for i in i.keys()][0]] for i in results123[0:3]]
-resCV_B = [i[[i for i in i.keys()][0]] for i in results123[3::]]
+# resCV_A = [i[[i for i in i.keys()][0]] for i in results123[0:3]]
+# resCV_B = [i[[i for i in i.keys()][0]] for i in results123[3::]]
 
-indx = resCV_A[0].index
-fin_res_A = pd.DataFrame(index = indx)
-fin_res_B = pd.DataFrame(index = indx)
-for ids,data_res in zip(ids_t1_t2_joblib, results123):
-    curr_dat = data_res[ids][0]
-    if 'A' in ids:
-        fin_res_A[ids] = curr_dat
-    elif 'B' in ids:
-        fin_res_B[ids] = curr_dat
+# indx = resCV_A[0].index
+# fin_res_A = pd.DataFrame(index = indx)
+# fin_res_B = pd.DataFrame(index = indx)
+# for ids,data_res in zip(ids_t1_t2_joblib, results123):
+#     curr_dat = data_res[ids][0]
+#     if 'A' in ids:
+#         fin_res_A[ids] = curr_dat
+#     elif 'B' in ids:
+#         fin_res_B[ids] = curr_dat
 
-path = r'C:\Users\de_hauk\HESSENBOX\apps_tzakiris_rep\data\output'
-fin_res_A.to_csv(path + '/fit_data_sample_T1_CV.csv')
-fin_res_B.to_csv(path + '/fit_data_sample_T2_CV.csv')
+# path = r'C:\Users\de_hauk\HESSENBOX\apps_tzakiris_rep\data\output'
+# fin_res_A.to_csv(path + '/fit_data_sample_T1_CV.csv')
+# fin_res_B.to_csv(path + '/fit_data_sample_T2_CV.csv')
 
 
 

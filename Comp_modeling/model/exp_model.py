@@ -263,7 +263,7 @@ bf_log_group = pd.DataFrame()
 res_all = []
 
 
-for vpn in unique_id[0:1]:
+for vpn in unique_id:
     print(vpn)
 
     curr_data_vpn = data[vpn]
@@ -324,15 +324,8 @@ for vpn in unique_id[0:1]:
                                       epsilon=epsilon_param)
         
         #plugin opt params and evaluate model, get imputed data
-        verbose_M1_CV = VIEW_INDIPENDENTxCONTEXT(data_ALL_verbose, trial_rl_cv, res_M1_CV[0])
-        
-        
-        # data_ALL_CV = [verbose_M1_CV[1]['model_internals']['action_CV'], # insert imputed data
-        #                 new_ID.astype(int), 
-        #                 n_prev_pres.astype(int), 
-        #                 stim_IDs_VI, 
-        #                 stim_IDs_VD, 
-        #                 True]
+        #verbose_M1_CV = VIEW_INDIPENDENTxCONTEXT(data_ALL_verbose, None, res_M1_CV[0])
+
         
         ##### evaluate imputed data with in CV procedure optimized params
         expl_res_CV = VIEW_INDIPENDENTxCONTEXT(data_ALL_verbose, None, res_M1_CV[0])
@@ -344,8 +337,7 @@ for vpn in unique_id[0:1]:
         cv_score_list.append(cv_score_log)
         
         res_total_fin = {'opt_model_norm': verbose_M1,
-                          'opt_model_CV': verbose_M1_CV,
-                          'eval_CV': expl_res_CV,
+                          'opt_model_CV': expl_res_CV,
                           'CV_score': cv_score_log}
         res_verbose.append(res_total_fin)
     

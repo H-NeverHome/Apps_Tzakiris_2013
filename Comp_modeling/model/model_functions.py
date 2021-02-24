@@ -769,19 +769,19 @@ def data_cv(data_vpn):
                 stim_IDs_VD, 
                 verbose] 
     
-    cv_scores = {'VIEW_INDIPENDENTxCONTEXT'                 :[],
+    # cv_scores = {'VIEW_INDIPENDENTxCONTEXT'                 :[],
+    #              'VIEW_DEPENDENT'                           :[],
+    #              'VIEW_DEPENDENTxCONTEXT_DEPENDENT'         :[],
+    #              'VIEW_INDEPENDENT'                         :[],
+    #              'VIEW_INDEPENDENTxVIEW_DEPENDENT'          :[],
+    #              'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT'  :[]}
+    cv_scores =   {'VIEW_INDIPENDENTxCONTEXT'                 :[],
                  'VIEW_DEPENDENT'                           :[],
                  'VIEW_DEPENDENTxCONTEXT_DEPENDENT'         :[],
                  'VIEW_INDEPENDENT'                         :[],
                  'VIEW_INDEPENDENTxVIEW_DEPENDENT'          :[],
                  'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT'  :[]}
-    cv_data =   {'VIEW_INDIPENDENTxCONTEXT'                 :[],
-                 'VIEW_DEPENDENT'                           :[],
-                 'VIEW_DEPENDENTxCONTEXT_DEPENDENT'         :[],
-                 'VIEW_INDEPENDENT'                         :[],
-                 'VIEW_INDEPENDENTxVIEW_DEPENDENT'          :[],
-                 'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT'  :[]}
-    for trial in range(len(VPN_output)):
+    for trial in range(len(VPN_output)-160):
         print(trial)
         
 
@@ -917,19 +917,28 @@ def data_cv(data_vpn):
         parameter_est['VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT'] = res6[0]
         m_6 = VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT(data_ALL_debug,None, params_m_6)
         
-        if trial == 15:
-            cv_data['VIEW_INDIPENDENTxCONTEXT'].append(m_1)
-            cv_data['VIEW_DEPENDENT'].append(m_2)
-            cv_data['VIEW_DEPENDENTxCONTEXT_DEPENDENT'].append(m_3)
-            cv_data['VIEW_INDEPENDENT'].append(m_4)
-            cv_data['VIEW_INDEPENDENTxVIEW_DEPENDENT'].append(m_5)
-            cv_data['VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT'].append(m_6)
-            
-        cv_scores['VIEW_INDIPENDENTxCONTEXT'].append(m_1)
-        cv_scores['VIEW_DEPENDENT'].append(m_2)
-        cv_scores['VIEW_DEPENDENTxCONTEXT_DEPENDENT'].append(m_3)
-        cv_scores['VIEW_INDEPENDENT'].append(m_4)
-        cv_scores['VIEW_INDEPENDENTxVIEW_DEPENDENT'].append(m_5)
-        cv_scores['VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT'].append(m_6)
-    return (cv_scores,cv_data)
+        # if trial == 2:
+        cv_scores['VIEW_INDIPENDENTxCONTEXT'].append(np.log(m_1[1]['history_answer'][trial]))
+        cv_scores['VIEW_DEPENDENT'].append(np.log(m_2[1]['history_answer'][trial]))
+        cv_scores['VIEW_DEPENDENTxCONTEXT_DEPENDENT'].append(np.log(m_3[1]['history_answer'][trial]))
+        cv_scores['VIEW_INDEPENDENT'].append(np.log(m_4[1]['history_answer'][trial]))
+        cv_scores['VIEW_INDEPENDENTxVIEW_DEPENDENT'].append(np.log(m_5[1]['history_answer'][trial]))
+        cv_scores['VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT'].append(np.log(m_6[1]['history_answer'][trial]))
+        
+        # cv_scores['VIEW_INDIPENDENTxCONTEXT'].append(m_1)
+        # cv_scores['VIEW_DEPENDENT'].append(m_2)
+        # cv_scores['VIEW_DEPENDENTxCONTEXT_DEPENDENT'].append(m_3)
+        # cv_scores['VIEW_INDEPENDENT'].append(m_4)
+        # cv_scores['VIEW_INDEPENDENTxVIEW_DEPENDENT'].append(m_5)
+        # cv_scores['VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT'].append(m_6)
+    cv_scores['VIEW_INDIPENDENTxCONTEXT'] = np.array(cv_scores['VIEW_INDIPENDENTxCONTEXT']).sum()
+    cv_scores['VIEW_DEPENDENT'] = np.array(cv_scores['VIEW_DEPENDENT']).sum()
+    cv_scores['VIEW_DEPENDENTxCONTEXT_DEPENDENT'] = np.array(cv_scores['VIEW_DEPENDENTxCONTEXT_DEPENDENT']).sum()
+    cv_scores['VIEW_INDEPENDENT'] = np.array(cv_scores['VIEW_INDEPENDENT']).sum()
+    cv_scores['VIEW_INDEPENDENTxVIEW_DEPENDENT'] = np.array(cv_scores['VIEW_INDEPENDENTxVIEW_DEPENDENT']).sum()
+    cv_scores['VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT'] = np.array(cv_scores['VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT']).sum()
+    
+    
+    
+    return (unique_id,cv_scores)
 
