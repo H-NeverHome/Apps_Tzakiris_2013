@@ -23,7 +23,6 @@ class Apps_Tsakiris_2013:
         import pandas as pd
         import glob
         import numpy as np
-        from autoimpute.imputations import MultipleImputer
         # data_path = r'C:\Users\de_hauk\HESSENBOX\apps_tzakiris_rep\data\data_new_12_08_2020\data_raw\csv'
         # ground_truth_file = r'C:\Users\de_hauk\HESSENBOX\apps_tzakiris_rep\data\data_new_12_08_2020\data_list\stimuli_list.csv'
         
@@ -115,6 +114,9 @@ class Apps_Tsakiris_2013:
         self.clean_data = final_dat
         if verbose == True:
             return final_dat
+        
+        
+        
 
     def fit_data_seperate(self, verbose_tot):
         import os
@@ -122,13 +124,14 @@ class Apps_Tsakiris_2013:
         
         from model_functions import VIEW_INDIPENDENTxCONTEXT,VIEW_DEPENDENT,VIEW_DEPENDENTxCONTEXT_DEPENDENT
         from model_functions import VIEW_INDEPENDENT, VIEW_INDEPENDENTxVIEW_DEPENDENT
-        from model_functions import VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT
+        from model_functions import VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT,bic
 
         import pandas as pd
         import numpy as np
         from functools import partial
         from scipy import optimize,special
         np.random.seed(1993)
+
         ### Get data 
         data_unform = self.clean_data 
         data_A = data_unform['A']
@@ -155,6 +158,12 @@ class Apps_Tsakiris_2013:
                         'VIEW_INDEPENDENTxVIEW_DEPENDENT',
                         'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT',
                         'random_choice']
+        models_names_bic = ['VIEW_INDIPENDENTxCONTEXT',
+                            'VIEW_DEPENDENT',
+                            'VIEW_DEPENDENTxCONTEXT_DEPENDENT',
+                            'VIEW_INDEPENDENT',
+                            'VIEW_INDEPENDENTxVIEW_DEPENDENT',
+                            'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT']
         
         parameter_est = {'VIEW_INDIPENDENTxCONTEXT': pd.DataFrame(index=params_M1_name),
                         'VIEW_DEPENDENT': pd.DataFrame(index=params_M2_name),
@@ -335,13 +344,35 @@ class Apps_Tsakiris_2013:
             res_M1 = VIEW_INDIPENDENTxCONTEXT(data_ALL_debug,None, params_m_1)        
     
             trialwise_data[i] = res_M1[1]['data_store_1']
-        restotal = res_evidence.sum(axis=1)
-        # cntrl_log = special.logsumexp(np.array(restotal[1::]))
-        # bf_log = (cntrl_log -(np.array(restotal[0])))
         
+        ### some calculation
+        restotal = res_evidence.sum(axis=1)
+        group_level_me_A = res_evidence[[i for i in res_evidence if 'A' in i]].sum(axis=1)
+        group_level_me_B = res_evidence[[i for i in res_evidence if 'B' in i]].sum(axis=1)
+        
+        ##### BIC calc
+        indxs = ['bic','raw_LL','n_params', 'sample_size']
+        bic_fit_A= pd.DataFrame(index=indxs)
+        bic_fit_B= pd.DataFrame(index=indxs)
+        for time_data,time in zip([group_level_me_A,group_level_me_B],['A','B']):
+            for model in models_names_bic:
+                n_params = len(list(parameter_est[model].index))
+                sample_size = len([i for i in res_evidence if 'A' in i])
+                if time == 'A':
+                    raw_LL = group_level_me_A[model]
+                    bic_curr = bic(n_params, sample_size, raw_LL)
+                    bic_fit_A[model] = [bic_curr,raw_LL,n_params, sample_size]
+                elif time == 'B':
+                    raw_LL = group_level_me_A[model]
+                    bic_curr = bic(n_params, sample_size, raw_LL)
+                    bic_fit_B[model] = [bic_curr,raw_LL,n_params, sample_size]        
+        ## summarize data
         results_1 = {'subject_level_model_evidence':res_evidence,
-                    'group_level_me_A': res_evidence[[i for i in res_evidence if 'A' in i]].sum(axis=1),
-                    'group_level_me_B': res_evidence[[i for i in res_evidence if 'B' in i]].sum(axis=1),
+                    'group_level_me_A': group_level_me_A,
+                    'group_level_me_B': group_level_me_B,
+                    'group_level_me_AB':restotal,
+                    'group_level_BIC_A':bic_fit_A,
+                    'group_level_BIC_B':bic_fit_B,
                     'used_data': data_AB,
                     'subject_level_parameter-estimates':parameter_est,
                     'subject_level_trialwise_data_win_model':trialwise_data}
@@ -359,8 +390,6 @@ class Apps_Tsakiris_2013:
         from model_functions import VIEW_INDIPENDENTxCONTEXT,VIEW_DEPENDENT,VIEW_DEPENDENTxCONTEXT_DEPENDENT
         from model_functions import VIEW_INDEPENDENT, VIEW_INDEPENDENTxVIEW_DEPENDENT
         from model_functions import VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT
-               
-    
         from tqdm import tqdm
         import pandas as pd
         import numpy as np
@@ -437,12 +466,6 @@ class Apps_Tsakiris_2013:
             VPN_output_t2  = curr_data_vpn_t2['answer'] #VPN answers
             verbose = False
             
-            # data_ALL = [VPN_output.astype(int), 
-            #             new_ID.astype(int), 
-            #             n_prev_pres.astype(int), 
-            #             stim_IDs_VI, 
-            #             stim_IDs_VD, 
-            #             verbose]  
             data_ALL_T1 = [VPN_output_t1,
                            new_ID_t1,
                            numb_prev_presentations_t1,
@@ -658,7 +681,6 @@ class Apps_Tsakiris_2013:
         return ('non_exceedence_prob',non_exceedence_prob)
         
     def behavioral_performance(self):
-        
         import pandas as pd
         data_raw = self.clean_data 
         data_A = data_raw['A']
@@ -696,6 +718,7 @@ class Apps_Tsakiris_2013:
                    'M_res_AB':m_performance}
         self.behav_perf = results
         return results
+    
             
     def learning_effect(self):       
         
@@ -756,7 +779,6 @@ class Apps_Tsakiris_2013:
         return tot_res
     
     def task_reliability(self):
-            
         # ICC
         res_beh = self.behav_perf
         icc_data = res_beh['res_A'].T.append(res_beh['res_B'].T).round(3)
@@ -779,6 +801,7 @@ class Apps_Tsakiris_2013:
         res = {'icc': icc_2,
               'corr': corr}
         return res
+    
     
     def model_selection_AT(self):
         import pandas as pd
@@ -832,8 +855,6 @@ class Apps_Tsakiris_2013:
         lmbda_mult = -2*(special.logsumexp(np.array(ll_dat.T['ll'])-ll_dat[model_win][0]))
         
         #transpose 
-        
-        
         #get BIC
         bic = []
         for i in model_all:
@@ -849,8 +870,6 @@ class Apps_Tsakiris_2013:
                 'LR_fin': ll_fin}  
 
     def corr_LR(self):
-        
-
         import pandas as pd
         import numpy as np
         
@@ -901,12 +920,20 @@ class Apps_Tsakiris_2013:
             
     
 
-    def time_agn_LR(self):
-        res_fit_sep = self.fit_separate
-        res_fit_comb = self.combined_fit
-        unq_ids = [i for i in res_fit_sep]
- 
-           
+    def time_agn10_LR(self):
+        import numpy as np
+        import pandas as pd
+        res_fit_sep = self.fit_separate['group_level_me_AB']
+        res_fit_comb = self.combined_fit.sum(axis=1)
+        model_names = list(res_fit_sep.index)
+        res_time_agn10 = pd.DataFrame(index = ['fit_comb','fit_sep','LR_agn_10'])
+        for model in model_names:
+            curr_sep = res_fit_sep[model]
+            curr_comb = res_fit_comb[model]
+            curr_agn_10 = curr_comb-curr_sep
+            res_time_agn10[model] = [curr_comb,curr_sep,curr_agn_10]
+        return res_time_agn10
+            
     def fit_data_separate_LOOCV(self):
             ##########
         import pandas as pd
@@ -918,8 +945,6 @@ class Apps_Tsakiris_2013:
         import pandas as pd
         np.random.seed(1993)
         from model_functions import data_cv
-
-        
         ### Get data 
         data_unform = self.clean_data
         data_A = data_unform['A']
@@ -961,4 +986,51 @@ class Apps_Tsakiris_2013:
                           'group_level_CV':data_res_tot.sum(axis=1)}
             return return_dat     
         
- 
+    def ttest_procedure(self):
+        import pandas as pd
+        import pingouin as pg
+        import numpy as np
+        ''' 
+        As described in Apps & Tsakiris, we ran a series of independent
+        two-sided t-tests and corrected via Benjamini–Hochberg false discovery
+        rate (FDR)
+        '''
+        
+        data_fit = self.fit_separate['subject_level_model_evidence']
+        data_A = data_fit[[i for i in data_fit if 'A' in i]]
+        data_B = data_fit[[i for i in data_fit if 'B' in i]]
+        
+        win_model = 'VIEW_INDIPENDENTxCONTEXT'
+        indx_models = [i for i in data_B.T if 'VIEW_INDIPENDENTxCONTEXT' not in i]
+        indx_res = ['p-val','cohen-d','BF10','obs_power','T']
+        
+        res_A = pd.DataFrame(index = indx_res)
+        res_B = pd.DataFrame(index = indx_res)
+        #for each time-point
+        for time,time_str in zip([data_A, data_B],['data_A', 'data_B']):
+            data_curr = time.copy().T
+            for model in indx_models:
+                res_tt_raw = pg.ttest(data_curr[win_model],data_curr[model])
+                res_tt_ind = [res_tt_raw['p-val'][0],
+                              res_tt_raw['cohen-d'][0],
+                              res_tt_raw['BF10'][0],
+                              res_tt_raw['power'][0],
+                              res_tt_raw['T'][0]]
+                
+                clm_name = win_model + '_vs_' + model
+                if time_str == 'data_A':
+                    res_A[clm_name] = res_tt_ind
+                elif time_str == 'data_B':
+                    res_B[clm_name] = res_tt_ind
+        #FDR correction
+        fdr_dat_A = res_A.copy().T.astype(float)
+        fdr_dat_A['pval_FDR'] = pg.multicomp([i for i in fdr_dat_A['p-val']],
+                                             alpha=0.02,
+                                             method='fdr_bh')[1]
+        fdr_dat_B = res_B.copy().T.astype(float)
+        fdr_dat_B['pval_FDR'] = pg.multicomp([i for i in fdr_dat_B['p-val']],
+                                             alpha=0.02,
+                                             method='fdr_bh')[1]
+               
+        return (fdr_dat_A,fdr_dat_B)
+        

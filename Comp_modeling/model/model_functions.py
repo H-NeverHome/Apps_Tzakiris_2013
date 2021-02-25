@@ -72,7 +72,9 @@ def view_dep_suppl_dat(stim_IDs_perspective):
         numb_presentations.append(new_numb_presentations[i])
     return unq_stim,numb_presentations
 
-
+def bic(n_param, sample_size, raw_LL):
+    bic = (n_param*np.log(sample_size))-(2*raw_LL)
+    return bic
 
 ################################### Winning Model: INDIPENDENTxCONTEXT #############################################
 # partial // Argumentabfolge functools partials 

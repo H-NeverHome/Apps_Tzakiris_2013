@@ -43,13 +43,14 @@ pathtomodels = r'C:\Users\de_hauk\Documents\GitHub\Apps_Tzakiris_2013\Comp_model
 data_analyses = Apps_Tsakiris_2013(path_data,
                                    path_ground_truth,
                                    path_to_class)
-##### preprocess & clean data
+########## preprocess & clean data
 data_processed = data_analyses.get_data(verbose = True)
 
 ########## Behavioral analysis
 res_behavioral = data_analyses.behavioral_performance()
 
 res_learning_effect = data_analyses.learning_effect()
+
 
 ######### Reliability analysis
 res_relibility = data_analyses.task_reliability()
@@ -69,16 +70,18 @@ res_fit_sep = data_analyses.fit_data_seperate(False)
 res_LR = data_analyses.corr_LR()
 
 # t-test procedure
+res_ttest = data_analyses.ttest_procedure()
 
 ##### model selection results by apps & tsakiris 2013
 res_AT_model_select = data_analyses.model_selection_AT()
 
 ########## Within-time model fitting
 ##### Model fitting under common set of MLE-params
-res_comb = data_analyses.fit_data_combined()
+res_fit_comb = data_analyses.fit_data_combined()
 
 ##### Random Effects within time analysis
 res_RFX = data_analyses.RFX_modelselection(res_fit_sep)
 
-
+##### time agn 10 LR
+res_agn_10 = data_analyses.time_agn10_LR()
 ##########
