@@ -6,10 +6,6 @@ Created on Tue Feb 16 10:10:21 2021
 """
 
 
-### TODO
-# -> Implement CV -> EXP_Model+
-# -> Implement time agn LR with joblib
-# -> 
 
 
 class Apps_Tsakiris_2013:
@@ -77,7 +73,7 @@ class Apps_Tsakiris_2013:
             n_prev_VD = []
             unq_stim_ID_VI = {}
             unq_stim_ID_VD = {}
-            for stim_VI,stim_VD in zip(data_id_fin['stim_IDs_VI'], data_id_fin['stim_IDs_VI']):
+            for stim_VI,stim_VD in zip(data_id_fin['stim_IDs_VI'], data_id_fin['stim_IDs_VD']):
         
                 key_VI, key_VD = str(stim_VI),str(stim_VD)
                 
@@ -93,7 +89,6 @@ class Apps_Tsakiris_2013:
                 
                 ## count VD_Stims
                 curr_keys_VD = [i for i in unq_stim_ID_VD.keys()]
-        
                 if key_VD not in curr_keys_VD:
                     unq_stim_ID_VD[key_VD] = 1
                 elif key_VD in curr_keys_VD:
@@ -363,7 +358,7 @@ class Apps_Tsakiris_2013:
                     bic_curr = bic(n_params, sample_size, raw_LL)
                     bic_fit_A[model] = [bic_curr,raw_LL,n_params, sample_size]
                 elif time == 'B':
-                    raw_LL = group_level_me_A[model]
+                    raw_LL = group_level_me_B[model]
                     bic_curr = bic(n_params, sample_size, raw_LL)
                     bic_fit_B[model] = [bic_curr,raw_LL,n_params, sample_size]        
         ## summarize data
@@ -697,12 +692,12 @@ class Apps_Tsakiris_2013:
         for vpn in unq_ids:
             curr_dat = data_AB[vpn]
             missings = stimulus_len-len(curr_dat.index)
-            perc_correct = curr_dat['perf'].sum()/len(curr_dat.index)
+            perc_correct = (curr_dat['perf'].sum()/len(curr_dat.index))*100
             n_errors = len(curr_dat.index)-curr_dat['perf'].sum()
             if 'A' in vpn:
                 data_perf_A[vpn] = [perc_correct,
-                                  n_errors,
-                                  missings]
+                                    n_errors,
+                                    missings]
             elif 'B' in vpn:
                 data_perf_B[vpn] = [perc_correct,
                                     n_errors,
@@ -752,8 +747,8 @@ class Apps_Tsakiris_2013:
         p_answer['B_10_12'] = df_10_10_L_B
         
         
-        res_A = pg.ttest(p_answer['A_10_12'],p_answer['A_1_3'])
-        res_B = pg.ttest(p_answer['B_10_12'],p_answer['B_1_3'])
+        res_A = pg.ttest(p_answer['A_10_12'],p_answer['A_1_3'],paired = True)
+        res_B = pg.ttest(p_answer['B_10_12'],p_answer['B_1_3'],paired = True)
         
         res = pd.DataFrame(index = [i for i in res_A.columns])
         res['A_1_2_3_vs_10_11_12'] = res_A.loc['T-test']
@@ -766,7 +761,10 @@ class Apps_Tsakiris_2013:
                                power=.95,
                                alpha = .0001,
                                n=None)
-        
+        mean_pyes = pd.DataFrame()
+        for i in p_answer:
+            mean_pyes[i] = [p_answer[i].mean()]
+
         power_analysis = {'AT_t':14.661,
                           'AT_N':16,
                           'AT_recon_D':observed_D,
@@ -775,6 +773,7 @@ class Apps_Tsakiris_2013:
         tot_res = {'used_dat':data_raw,
                    'proc_data':p_answer,
                    'res_ttest':res,
+                   'proc_M':mean_pyes,
                    'AT_ES_D_poweranalysis':power_analysis}
         return tot_res
     
@@ -968,7 +967,7 @@ class Apps_Tsakiris_2013:
 
         if __name__ == 'class_import':   
             results123 = Parallel(n_jobs=8,
-                                  verbose=50,
+                                  verbose=45,
                                   backend='loky')(delayed(data_cv)(i) for i in data_job)    
             
             index_models = [i for i in results123[0][1]]
@@ -980,10 +979,15 @@ class Apps_Tsakiris_2013:
                     model_ev_L.append(curr_dat[model])
             
                 data_res_tot[curr_id] = model_ev_L
-            
+            group_level_CV_A = data_res_tot[[i for i in data_res_tot if 'A' in i]].sum(axis=1)
+            group_level_CV_B = data_res_tot[[i for i in data_res_tot if 'B' in i]].sum(axis=1)
+            data_res_tot['A_sum'] = data_res_tot[[i for i in data_res_tot if 'A' in i]].sum(axis=1)
+            data_res_tot['B_sum'] = data_res_tot[[i for i in data_res_tot if 'B' in i]].sum(axis=1)
             return_dat = {'raw_results_CV':results123,
                           'subj_level_CV':data_res_tot,
-                          'group_level_CV':data_res_tot.sum(axis=1)}
+                          'group_level_CV_A':group_level_CV_A,
+                          'group_level_CV_B':group_level_CV_B
+                          }
             return return_dat     
         
     def ttest_procedure(self):
@@ -1031,6 +1035,175 @@ class Apps_Tsakiris_2013:
         fdr_dat_B['pval_FDR'] = pg.multicomp([i for i in fdr_dat_B['p-val']],
                                              alpha=0.02,
                                              method='fdr_bh')[1]
-               
-        return (fdr_dat_A,fdr_dat_B)
+        
+        return_dict={'t_test_A':fdr_dat_A,
+                     't_test_B':fdr_dat_B}
+        return return_dict
+        
+
+
+    def gen_data(self, verbose_tot):
+        import os
+        os.chdir(self.path_to_modelfunctions)
+        
+        from model_functions import VIEW_INDIPENDENTxCONTEXT,VIEW_DEPENDENT,VIEW_DEPENDENTxCONTEXT_DEPENDENT
+        from model_functions import VIEW_INDEPENDENT, VIEW_INDEPENDENTxVIEW_DEPENDENT
+        from model_functions import VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT,bic
+        from model_functions import VIEW_INDIPENDENTxCONTEXT_gen
+        import pandas as pd
+        import numpy as np
+        from functools import partial
+        from scipy import optimize,special
+        np.random.seed(1993)
+
+        ### Get data 
+        data_unform = self.clean_data 
+        data_A = data_unform['A']
+        data_B = data_unform['B']
+        data_AB = {**data_A,**data_B}
+        
+        #### get unique IDS
+        unique_id = list(data_AB.keys())
+
+        
+        epsilon_param = .01
+        x_0_bfgs = 0.5
+        params_M1_name = ['alpha', 'sigma', 'beta', 'lamd_a'] 
+        params_M2_name = ['alpha', 'beta', 'lamd_a']
+        params_M3_name = ['alpha', 'sigma', 'beta', 'lamd_a']
+        params_M4_name = ['alpha', 'beta', 'lamd_a']
+        params_M5_name = ['alpha_ind', 'alpha_dep', 'beta', 'lamd_a_ind', 'lamd_a_dep']
+        params_M6_name = ['alpha_ind', 'alpha_dep', 'sigma', 'beta', 'lamd_a_ind', 'lamd_a_dep']
+    
+        models_names = ['VIEW_INDIPENDENTxCONTEXT',
+                        'VIEW_DEPENDENT',
+                        'VIEW_DEPENDENTxCONTEXT_DEPENDENT',
+                        'VIEW_INDEPENDENT',
+                        'VIEW_INDEPENDENTxVIEW_DEPENDENT',
+                        'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT',
+                        'random_choice']
+        models_names_bic = ['VIEW_INDIPENDENTxCONTEXT',
+                            'VIEW_DEPENDENT',
+                            'VIEW_DEPENDENTxCONTEXT_DEPENDENT',
+                            'VIEW_INDEPENDENT',
+                            'VIEW_INDEPENDENTxVIEW_DEPENDENT',
+                            'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT']
+        
+        parameter_est = {'VIEW_INDIPENDENTxCONTEXT': pd.DataFrame(index=params_M1_name),
+                        'VIEW_DEPENDENT': pd.DataFrame(index=params_M2_name),
+                        'VIEW_DEPENDENTxCONTEXT_DEPENDENT': pd.DataFrame(index=params_M3_name),
+                        'VIEW_INDEPENDENT': pd.DataFrame(index=params_M4_name),
+                        'VIEW_INDEPENDENTxVIEW_DEPENDENT': pd.DataFrame(index=params_M5_name),
+                        'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT': pd.DataFrame(index=params_M6_name)
+                            }
+                        
+        data_verbose_debug = {}
+        res_evidence = pd.DataFrame(index=models_names)
+        trialwise_data = {}
+        bf_log_group = pd.DataFrame()
+        res_synth_tot = {}
+        
+        for vpn in unique_id:
+            #func calls & rand starts
+            print(vpn)
+
+            curr_data_vpn = data_AB[vpn]
+
+            # get data
+            stim_IDs_VI=    np.array(curr_data_vpn['stim_IDs_VI'])  #stimulus IDs of winning model 
+            new_ID=         np.array(curr_data_vpn['new_IDs'])      #trials where new ID is introduced 
+            n_prev_pres=    np.array(curr_data_vpn['n_prev_VI'])    #number_of_prev_presentations
+            stim_IDs_VD=    np.array(curr_data_vpn['stim_IDs_VD'])  #view dependent
+            VPN_output =    np.array(curr_data_vpn['answer'])       #VPN answers
+            verbose =       False
+
+            #data_All = [VPN_output, new_ID, numb_prev_presentations, stim_IDs_VI,stim_IDs_VD,verbose]
+
+            data_ALL = [VPN_output.astype(int), 
+                        new_ID.astype(int), 
+                        n_prev_pres.astype(int), 
+                        stim_IDs_VI, 
+                        stim_IDs_VD, 
+                        verbose]            
+
+            ########## Model Optim
+            
+            i=vpn
+            print('VIEW_INDIPENDENTxCONTEXT')
+    
+            bounds_M1 = [(0,1),(0,1),(.1,20),(0,2)]
+            
+            part_func_M1 = partial(VIEW_INDIPENDENTxCONTEXT,data_ALL,None) 
+            res1 = optimize.fmin_l_bfgs_b(part_func_M1,
+                                          approx_grad = True,
+                                          bounds = bounds_M1, 
+                                          x0 = [x_0_bfgs for i in range(len(bounds_M1))],
+                                          epsilon=epsilon_param)
+            
+            params_m_1 = res1[0]
+            m_1 = VIEW_INDIPENDENTxCONTEXT(data_ALL,None,params_m_1)
+                            
+            synthetic_data = VIEW_INDIPENDENTxCONTEXT_gen(data_ALL, None, params_m_1)
+            res_synth_tot[vpn] = synthetic_data
+        return res_synth_tot
+            # re_evidence_subj = [(-1*i[1]) for i in [res1,res2,res3,res4,res5,res6]] + [rnd_choice]
+            # res_evidence[i] = re_evidence_subj
+            
+            # ### Subject BF_LOG
+            # bf_log_subj = re_evidence_subj[0]-special.logsumexp(np.array(re_evidence_subj[1::]))
+            # bf_log_group[i + '_BF_log'] = [bf_log_subj]
+    
+            
+            # ############################## Verbose == True ###########################
+            
+            #     res_debug = {models_names[0]: m_1,
+            #                  models_names[1]: m_2,
+            #                  models_names[2]: m_3,
+            #                  models_names[3]: m_4,
+            #                  models_names[4]: m_5,
+            #                  models_names[5]: m_6}
+            #     data_verbose_debug[i] = res_debug
+                
+        # #### Get winning model trialwise dat ####
+        #     params_m_1 = res1[0]
+        #     res_M1 = VIEW_INDIPENDENTxCONTEXT(data_ALL_debug,None, params_m_1)        
+    
+        #     trialwise_data[i] = res_M1[1]['data_store_1']
+        
+        # ### some calculation
+        # restotal = res_evidence.sum(axis=1)
+        # group_level_me_A = res_evidence[[i for i in res_evidence if 'A' in i]].sum(axis=1)
+        # group_level_me_B = res_evidence[[i for i in res_evidence if 'B' in i]].sum(axis=1)
+        
+        # ##### BIC calc
+        # indxs = ['bic','raw_LL','n_params', 'sample_size']
+        # bic_fit_A= pd.DataFrame(index=indxs)
+        # bic_fit_B= pd.DataFrame(index=indxs)
+        # for time_data,time in zip([group_level_me_A,group_level_me_B],['A','B']):
+        #     for model in models_names_bic:
+        #         n_params = len(list(parameter_est[model].index))
+        #         sample_size = len([i for i in res_evidence if 'A' in i])
+        #         if time == 'A':
+        #             raw_LL = group_level_me_A[model]
+        #             bic_curr = bic(n_params, sample_size, raw_LL)
+        #             bic_fit_A[model] = [bic_curr,raw_LL,n_params, sample_size]
+        #         elif time == 'B':
+        #             raw_LL = group_level_me_B[model]
+        #             bic_curr = bic(n_params, sample_size, raw_LL)
+        #             bic_fit_B[model] = [bic_curr,raw_LL,n_params, sample_size]        
+        # ## summarize data
+        # results_1 = {'subject_level_model_evidence':res_evidence,
+        #             'group_level_me_A': group_level_me_A,
+        #             'group_level_me_B': group_level_me_B,
+        #             'group_level_me_AB':restotal,
+        #             'group_level_BIC_A':bic_fit_A,
+        #             'group_level_BIC_B':bic_fit_B,
+        #             'used_data': data_AB,
+        #             'subject_level_parameter-estimates':parameter_est,
+        #             'subject_level_trialwise_data_win_model':trialwise_data}
+        # self.fit_separate = results_1
+        # if verbose_tot==True:
+        #     return (results_1,restotal,data_verbose_debug)
+        # elif verbose_tot==False:
+        #     return results_1
         

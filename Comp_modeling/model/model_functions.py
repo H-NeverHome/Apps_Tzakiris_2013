@@ -186,7 +186,87 @@ def VIEW_INDIPENDENTxCONTEXT(data,cv_trial,params):
                       'init_val':{'init_v': FP_rate,'init_c' : 0},
                       'history_V_dict':history_V}
         return (model_evidence,data_store)
-   
+ 
+    
+
+def VIEW_INDIPENDENTxCONTEXT_gen(data,cv_trial,params):
+    
+    alpha = params[0]
+    sigma = params[1]
+    beta = params[2]
+    lamd_a = params[3]
+    
+    VPN_output = data[0].copy()
+    new_ID = data[1]
+    numb_prev_presentations = data[2]
+    stim_IDs = data[3]
+    verbose = data[5]
+    
+    # get false positive answer rate
+    #print(VPN_output)
+    FP_rate = FP_rate_independent(lamd_a,
+                                  VPN_output,
+                                  numb_prev_presentations)
+
+    synth_data_subj = []
+    for i in range(100):
+        ### dict for Trackkeeping of history
+        history_V = dict.fromkeys([str(i) for i in range(1,25)], [FP_rate]) #set initial value of view_ind_fam as FP rate A&T pg.8 R
+        history_C = [0]
+        history_C_pe = []
+        history_V_ind = []
+        history_total = []
+        history_answer = []
+        model_evidence = 0
+        vfam_PE_list = []
+        
+        synth_dat = []
+        ### inner loop through trials
+        #for stim_ID,action,num_pres,trial in zip(stim_IDs,VPN_output,numb_prev_presentations,range(len(stim_IDs))):
+        for trial in range(len(stim_IDs)):
+           
+            stim_ID,action = stim_IDs[trial],VPN_output[trial]
+            
+            
+            ### Get predicted V_fam, C from last trial
+        
+            old_Vfam = history_V[stim_ID][-1]
+            old_c = history_C[-1]   
+            
+            
+            
+            # Update VFam
+            new_Vfam,vfam_PE = update_view_independent(lamd_a,alpha,old_Vfam)
+            vfam_PE_list.append(vfam_PE)
+            
+            newfamlist = history_V[stim_ID].copy() + [new_Vfam]
+            history_V[stim_ID] = newfamlist
+            history_V_ind.append(new_Vfam)
+            # Update C Fam   
+            new_c, context_PE = update_context(sigma,old_c,old_Vfam)
+            history_C_pe.append(context_PE)
+            history_C.append(new_c)
+            
+            ### get totfam
+            totfam = new_c*new_Vfam    
+            history_total.append(totfam)       
+        
+            #get answer prob
+            p_yes,p_no = answer_prob(beta,totfam)
+            
+            pred_answer = np.random.binomial(1,p_yes)
+            synth_dat.append(pred_answer)
+            # if no CV
+
+            if action == 1:
+                history_answer.append(p_yes)
+            if action == 0:
+                history_answer.append(p_no)
+    
+
+        synth_data_subj.append(synth_dat)
+    return synth_data_subj
+    
 ##### CV
 
 def VIEW_INDIPENDENTxCONTEXT_CV(params,old_vfam,old_cfam,action):
@@ -520,6 +600,81 @@ def VIEW_INDEPENDENT_CV(params, old_Vfam, action):
 #params = [alpha_ind, alpha_dep, beta, lamd_a_ind, lamd_a_dep]
 #data_ALL = [VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose]
 
+def VIEW_INDEPENDENTxVIEW_DEPENDENT_gen(data, params):
+    alpha_ind, alpha_dep, beta, lamd_a_ind, lamd_a_dep = params[0], params[1],params[2],params[3],params[4],
+    VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose = data[0],data[1],data[2],data[3],data[4],data[5]
+    
+    # Get init vals
+    FP_rate_dep = FP_rate_dependent(lamd_a_dep,VPN_output,numb_prev_presentations)
+    FP_rate_ind = FP_rate_independent(lamd_a_ind,VPN_output,numb_prev_presentations)
+    # # Get unique amount of stimuli
+    unq_stim,numb_presentations = view_dep_suppl_dat(stim_IDs_perspective)
+    
+    init = False
+    synth_data_subj = []
+    for i in range(100):
+        ### dict for Trackkeeping of history
+        history_V_depend = dict.fromkeys([str(i) for i in unq_stim[0]], [FP_rate_dep]) #set initial value of view_ind_fam as FP rate A&T pg.8 R
+        history_V_independ = dict.fromkeys([str(i) for i in range(1,25)], [FP_rate_ind])
+        history_answer = []
+        history_total = []
+        history_V_depend_L = []
+        history_V_independ_L = []
+        
+        synth_dat = []
+        ### inner loop through trials
+        for trial in range(len(stim_IDs)):
+            stim_ID_depend, stim_ID_indipend = stim_IDs_perspective[trial],stim_IDs[trial]
+            action,num_pres_depend, num_pres_independ = VPN_output[trial],numb_presentations[trial],numb_prev_presentations[trial]
+            ### Get all data for current trial
+            old_fam_depend = history_V_depend[stim_ID_depend][-1] # previos stim familiarity
+            old_fam_indipend = history_V_independ[stim_ID_indipend][-1]
+            
+            # update view-independent
+            new_fam_ind,new_fam_ind_PE = update_view_independent(lamd_a_ind,alpha_ind,old_fam_indipend)
+            history_V_independ_L.append(new_fam_ind)
+            
+            # update view-dependent
+            new_fam_dep,new_fam_dep_PE = update_view_dependent(lamd_a_dep,alpha_dep,old_fam_depend) # compute new stim familiarity
+            history_V_depend_L.append(new_fam_dep)   
+            #protocol data
+            new_fam_indipend_list = history_V_independ[stim_ID_indipend].copy() + [new_fam_ind] # append new stim familiarity to list
+            new_fam_depend_list = history_V_depend[stim_ID_depend].copy() + [new_fam_dep]
+            history_V_depend[stim_ID_depend] = new_fam_depend_list # replace list in dict
+            history_V_independ[stim_ID_indipend] = new_fam_indipend_list
+    
+    
+            ### get totfam @ time t
+            totfam = new_fam_ind + new_fam_dep   
+            history_total.append(totfam)
+        
+            #get answer prob
+            p_yes,p_no = answer_prob(beta,totfam)
+            
+            pred_answer = np.random.binomial(1,p_yes)[0]
+            synth_dat.append()
+    
+            if action == 1:
+                history_answer.append(p_yes)
+            if action == 0:
+                history_answer.append(p_no)
+        if init == False:
+            model_evidence = np.log(history_answer).sum()
+            data_store = {'history_answer': history_answer,
+                          'history_V_depend': history_V_depend,
+                          'history_V_independ': history_V_independ,
+                          'history_V_depend_L':history_V_depend_L,
+                          'history_V_independ_L':history_V_independ_L,                  
+                          'history_total': history_total,
+                          'params': [alpha_ind, alpha_dep, beta, lamd_a_ind, lamd_a_dep],
+                          'log_like': model_evidence,
+                          'suppl': (FP_rate_ind,FP_rate_dep)}
+        elif init == True:
+            synth_data_subj.append(synth_dat)
+        init == True
+    return (model_evidence, data_store,synth_data_subj)  
+
+
 def VIEW_INDEPENDENTxVIEW_DEPENDENT(data, cv_trial, params):
     alpha_ind, alpha_dep, beta, lamd_a_ind, lamd_a_dep = params[0], params[1],params[2],params[3],params[4],
     VPN_output, new_ID, numb_prev_presentations, stim_IDs, stim_IDs_perspective, verbose = data[0],data[1],data[2],data[3],data[4],data[5]
@@ -700,11 +855,11 @@ def VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT(data,cv_trial, params):
                 None
             
     model_evidence = np.log(history_answer).sum()
-    data_store = {'history_answer': history_answer,
-                  'history_V_depend': history_V_depend,
-                  'history_V_independ': history_V_independ,
-                  'history_V_depend_L': history_V_depend_L, 
-                  'history_V_independ_L': history_V_independ_L,
+    data_store = {'history_answer':         history_answer,
+                  'history_V_depend':       history_V_depend,
+                  'history_V_independ':     history_V_independ,
+                  'history_V_depend_L':     history_V_depend_L, 
+                  'history_V_independ_L':   history_V_independ_L,
                   'history_C':history_C,
                   'history_total': history_total,
                   'params': [alpha_ind, alpha_dep, sigma, beta, lamd_a_ind, lamd_a_dep],
@@ -783,8 +938,7 @@ def data_cv(data_vpn):
                  'VIEW_INDEPENDENT'                         :[],
                  'VIEW_INDEPENDENTxVIEW_DEPENDENT'          :[],
                  'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT'  :[]}
-    for trial in range(len(VPN_output)-160):
-        print(trial)
+    for trial in range(len(VPN_output)):
         
 
         epsilon_param = .01
@@ -827,7 +981,7 @@ def data_cv(data_vpn):
 
         bounds_M1 = [(0,1),(0,1),(.1,20),(0,2)]
         
-        part_func_M1 = partial(VIEW_INDIPENDENTxCONTEXT,data_ALL,None) 
+        part_func_M1 = partial(VIEW_INDIPENDENTxCONTEXT,data_ALL,trial) 
         res1 = optimize.fmin_l_bfgs_b(part_func_M1,
                                       approx_grad = True,
                                       bounds = bounds_M1, 
@@ -842,7 +996,7 @@ def data_cv(data_vpn):
                 
         bounds_M2 = [(0,1),(.1,20),(0,2)]
         
-        part_func_M2 = partial(VIEW_DEPENDENT,data_ALL,None) 
+        part_func_M2 = partial(VIEW_DEPENDENT,data_ALL,trial) 
         res2 = optimize.fmin_l_bfgs_b(part_func_M2,
                                       approx_grad = True,
                                       bounds = bounds_M2, 
@@ -858,7 +1012,7 @@ def data_cv(data_vpn):
 
         bounds_M3 = [(0,1),(0,1),(.1,20),(0,2)]
     
-        part_func_M3 = partial(VIEW_DEPENDENTxCONTEXT_DEPENDENT,data_ALL,None) 
+        part_func_M3 = partial(VIEW_DEPENDENTxCONTEXT_DEPENDENT,data_ALL,trial) 
         res3 = optimize.fmin_l_bfgs_b(part_func_M3,
                                       approx_grad = True,
                                       bounds = bounds_M3, 
@@ -874,7 +1028,7 @@ def data_cv(data_vpn):
 
         bounds_M4 = [(0,1),(.1,20),(0,2)]
     
-        part_func_M4 = partial(VIEW_INDEPENDENT,data_ALL,None) 
+        part_func_M4 = partial(VIEW_INDEPENDENT,data_ALL,trial) 
         res4 = optimize.fmin_l_bfgs_b(part_func_M4,
                                       approx_grad = True,
                                       bounds = bounds_M4, 
@@ -891,7 +1045,7 @@ def data_cv(data_vpn):
                 
         bounds_M5 = [(0,1),(0,1),(.1,20),(0,2),(0,2)]
     
-        part_func_M5 = partial(VIEW_INDEPENDENTxVIEW_DEPENDENT,data_ALL,None) 
+        part_func_M5 = partial(VIEW_INDEPENDENTxVIEW_DEPENDENT,data_ALL,trial) 
         res5 = optimize.fmin_l_bfgs_b(part_func_M5,
                                       approx_grad = True,
                                       bounds = bounds_M5, 
@@ -908,7 +1062,7 @@ def data_cv(data_vpn):
     
         bounds_M6 = [(0,1),(0,1),(0,1),(.1,20),(0,2),(0,2)]
     
-        part_func_M6 = partial(VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT,data_ALL,None) 
+        part_func_M6 = partial(VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT,data_ALL,trial) 
         res6 = optimize.fmin_l_bfgs_b(part_func_M6,
                                       approx_grad = True,
                                       bounds = bounds_M6, 

@@ -55,33 +55,29 @@ res_learning_effect = data_analyses.learning_effect()
 ######### Reliability analysis
 res_relibility = data_analyses.task_reliability()
 
-########## Between-time model fitting
+########## Between-time model fitting/ seperate for each timepoint
 ##### model selection results by apps & tsakiris 2013
 res_AT_model_select = data_analyses.model_selection_AT()
 
-# LOOCV score
-#res_CV = data_analyses.fit_data_separate_LOOCV()
-
-##### fit data seperate for each time-point
 # Raw LL
 res_fit_sep = data_analyses.fit_data_seperate(False)
 
-# Corrected Likelihood ratio
-res_LR = data_analyses.corr_LR()
+# # LOOCV score
+# res_CV = data_analyses.fit_data_separate_LOOCV()
 
-# t-test procedure
-res_ttest = data_analyses.ttest_procedure()
+# # Corrected Likelihood ratio
+# res_LR = data_analyses.corr_LR()
 
-##### model selection results by apps & tsakiris 2013
-res_AT_model_select = data_analyses.model_selection_AT()
+# # t-test procedure
+# res_ttest = data_analyses.ttest_procedure()
 
-########## Within-time model fitting
-##### Model fitting under common set of MLE-params
-res_fit_comb = data_analyses.fit_data_combined()
+# ########## Within-time model fitting
+# ##### Model fitting under common set of MLE-params
+# res_fit_comb = data_analyses.fit_data_combined()
 
-##### Random Effects within time analysis
-res_RFX = data_analyses.RFX_modelselection(res_fit_sep)
+# ##### Random Effects within time analysis
+# res_RFX = data_analyses.RFX_modelselection(res_fit_sep)
 
-##### time agn 10 LR
-res_agn_10 = data_analyses.time_agn10_LR()
-##########
+# ##### time agn 10 LR
+# res_agn_10 = data_analyses.time_agn10_LR()
+# ##########
