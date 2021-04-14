@@ -52,15 +52,15 @@ res_behavioral = data_analyses.behavioral_performance()
 res_learning_effect = data_analyses.learning_effect()
 
 
-######### Reliability analysis
-res_relibility = data_analyses.task_reliability()
+# ######### Reliability analysis
+# res_relibility = data_analyses.task_reliability()
 
-########## Between-time model fitting/ seperate for each timepoint
-##### model selection results by apps & tsakiris 2013
-res_AT_model_select = data_analyses.model_selection_AT()
+# ########## Between-time model fitting/ seperate for each timepoint
+# ##### model selection results by apps & tsakiris 2013
+# res_AT_model_select = data_analyses.model_selection_AT()
 
-# Raw LL
-res_fit_sep = data_analyses.fit_data_seperate(False)
+# # Raw LL
+# res_fit_sep = data_analyses.fit_data_seperate(False)
 
 # # LOOCV score
 # res_CV = data_analyses.fit_data_separate_LOOCV()

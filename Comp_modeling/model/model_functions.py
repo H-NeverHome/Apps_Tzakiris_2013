@@ -189,7 +189,7 @@ def VIEW_INDIPENDENTxCONTEXT(data,cv_trial,params):
  
     
 
-def VIEW_INDIPENDENTxCONTEXT_gen(data,cv_trial,params):
+def VIEW_INDIPENDENTxCONTEXT_gen(data,synth_sample_N,params):
     
     alpha = params[0]
     sigma = params[1]
@@ -209,7 +209,7 @@ def VIEW_INDIPENDENTxCONTEXT_gen(data,cv_trial,params):
                                   numb_prev_presentations)
 
     synth_data_subj = []
-    for i in range(100):
+    for i in range(synth_sample_N):
         ### dict for Trackkeeping of history
         history_V = dict.fromkeys([str(i) for i in range(1,25)], [FP_rate]) #set initial value of view_ind_fam as FP rate A&T pg.8 R
         history_C = [0]
@@ -262,9 +262,11 @@ def VIEW_INDIPENDENTxCONTEXT_gen(data,cv_trial,params):
                 history_answer.append(p_yes)
             if action == 0:
                 history_answer.append(p_no)
-    
+        
 
-        synth_data_subj.append(synth_dat)
+        synth_dat_fin = synth_dat
+        synth_data_subj.append(synth_dat_fin)
+        
     return synth_data_subj
     
 ##### CV
@@ -1098,3 +1100,109 @@ def data_cv(data_vpn):
     
     return (unique_id,cv_scores)
 
+
+
+############ Power_Analysis
+'genrate data from observed distribution from apps & tsakiris paper'
+def generate_data_pwr(path_ground_truth,min_sample,max_sample):
+    import numpy as np
+    import pandas as pd
+    at_sample_size = 15
+    SAMPLE_fullinfo = pd.read_csv(path_ground_truth).drop(columns = ['Unnamed: 0'])
+    prev_pres = np.array(SAMPLE_fullinfo[[i for i in SAMPLE_fullinfo][-1]])-1
+    fig2_c_mean = [.2,
+                   .43,
+                   .58,
+                   .7,
+                   .74,
+                   .76,
+                   .83,
+                   .77,
+                   .78,
+                   .81,
+                   .82,
+                   .78]
+    fig2_c_SEM = [.09,
+                  .08,
+                  .07,
+                  .09,
+                  .09,
+                  .08,
+                  .09,
+                  .1,
+                  .05,
+                  .07,
+                  .07,
+                  .09]
+    fig2_c_SD = np.array(fig2_c_SEM)*np.sqrt(15)
+
+    def bounds(x):
+        if x<=.0:
+            return .0001
+        elif x>=1.:
+            return .9999
+        else:
+            return x
+
+
+    res_beh = {}
+    res_prob = {}
+    for sample_size in range(min_sample,max_sample):
+        data_beh_synth = {}
+        data_prob_synth = []
+        for i in range(sample_size):
+            probs = []
+            perspective = []
+            for trial in prev_pres:
+                # generate probability
+                curr_prob_raw = np.random.normal(loc=fig2_c_mean[trial], scale=fig2_c_SD[trial])
+                # check bounds
+                curr_prob = bounds(curr_prob_raw)
+                probs.append(curr_prob)
+                #generate perspective data
+                persp = random.sample(['L','R','M'],1)[0]
+                perspective.append(persp)
+                
+            dat = np.random.binomial(1,probs)
+            trials_synth = pd.DataFrame()
+            trials_synth['answer'] =        dat
+            trials_synth['new_IDs'] =       SAMPLE_fullinfo['new_IDs']
+            trials_synth['stim_IDs_VI'] =   SAMPLE_fullinfo['stim_IDs']
+            trials_synth['perspective'] =   perspective
+            trials_synth['vdstim_raw'] = VD_stim = [str(i)+j for i,j in zip(trials_synth['stim_IDs_VI'],perspective)]
+            ##### VD count stim and prev_pres
+            unq_stim_VD = np.unique(VD_stim)
+            unq_stim_VI = np.unique(trials_synth['stim_IDs_VI'])
+            unq_stim_VD_dict = {}
+            #new numbering for VD stims
+            for key,val in zip(unq_stim_VD,range(len(unq_stim_VD))):
+                unq_stim_VD_dict[key] = val
+                
+            new_key_VD = [unq_stim_VD_dict[i] for i in VD_stim]
+            trials_synth['stim_IDs_VD'] = new_key_VD
+            ##### prev presentations
+            #VD
+            prev_pred_dict_VD = dict.fromkeys(np.unique(new_key_VD),0)
+            prev_pres_L_VD = []
+            #VI
+            prev_pred_dict_VI = dict.fromkeys(unq_stim_VI,0)
+            prev_pres_L_VI = []
+            
+            for vi,vd,trial in zip(list(trials_synth['stim_IDs_VI']),list(trials_synth['stim_IDs_VD']),range(len(list(trials_synth['stim_IDs_VD'])))):
+                prev_pred_dict_VI[vi] =  prev_pred_dict_VI[vi]+1
+                prev_pred_dict_VD[vd] =  prev_pred_dict_VD[vd] +1
+                prev_pres_L_VI.append(prev_pred_dict_VI[vi])
+                prev_pres_L_VD.append(prev_pred_dict_VD[vd])
+            
+            trials_synth['n_prev_VI'] =       prev_pres_L_VI
+            trials_synth['n_prev_VD'] =       prev_pres_L_VD
+            ###clean DF
+            trials_synth.drop(axis=1,labels = ['perspective','vdstim_raw'],inplace=True)
+            
+            ##save data
+            data_beh_synth[str(i)] = trials_synth
+            data_prob_synth.append(probs)
+
+        res_beh[sample_size] = data_beh_synth
+        res_prob[sample_size] = data_prob_synth
+    return res_beh

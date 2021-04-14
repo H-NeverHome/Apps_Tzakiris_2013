@@ -1042,110 +1042,7 @@ class Apps_Tsakiris_2013:
         
 
 
-    def gen_data(self, verbose_tot):
-        import os
-        os.chdir(self.path_to_modelfunctions)
-        
-        from model_functions import VIEW_INDIPENDENTxCONTEXT,VIEW_DEPENDENT,VIEW_DEPENDENTxCONTEXT_DEPENDENT
-        from model_functions import VIEW_INDEPENDENT, VIEW_INDEPENDENTxVIEW_DEPENDENT
-        from model_functions import VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT,bic
-        from model_functions import VIEW_INDIPENDENTxCONTEXT_gen
-        import pandas as pd
-        import numpy as np
-        from functools import partial
-        from scipy import optimize,special
-        np.random.seed(1993)
-
-        ### Get data 
-        data_unform = self.clean_data 
-        data_A = data_unform['A']
-        data_B = data_unform['B']
-        data_AB = {**data_A,**data_B}
-        
-        #### get unique IDS
-        unique_id = list(data_AB.keys())
-
-        
-        epsilon_param = .01
-        x_0_bfgs = 0.5
-        params_M1_name = ['alpha', 'sigma', 'beta', 'lamd_a'] 
-        params_M2_name = ['alpha', 'beta', 'lamd_a']
-        params_M3_name = ['alpha', 'sigma', 'beta', 'lamd_a']
-        params_M4_name = ['alpha', 'beta', 'lamd_a']
-        params_M5_name = ['alpha_ind', 'alpha_dep', 'beta', 'lamd_a_ind', 'lamd_a_dep']
-        params_M6_name = ['alpha_ind', 'alpha_dep', 'sigma', 'beta', 'lamd_a_ind', 'lamd_a_dep']
     
-        models_names = ['VIEW_INDIPENDENTxCONTEXT',
-                        'VIEW_DEPENDENT',
-                        'VIEW_DEPENDENTxCONTEXT_DEPENDENT',
-                        'VIEW_INDEPENDENT',
-                        'VIEW_INDEPENDENTxVIEW_DEPENDENT',
-                        'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT',
-                        'random_choice']
-        models_names_bic = ['VIEW_INDIPENDENTxCONTEXT',
-                            'VIEW_DEPENDENT',
-                            'VIEW_DEPENDENTxCONTEXT_DEPENDENT',
-                            'VIEW_INDEPENDENT',
-                            'VIEW_INDEPENDENTxVIEW_DEPENDENT',
-                            'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT']
-        
-        parameter_est = {'VIEW_INDIPENDENTxCONTEXT': pd.DataFrame(index=params_M1_name),
-                        'VIEW_DEPENDENT': pd.DataFrame(index=params_M2_name),
-                        'VIEW_DEPENDENTxCONTEXT_DEPENDENT': pd.DataFrame(index=params_M3_name),
-                        'VIEW_INDEPENDENT': pd.DataFrame(index=params_M4_name),
-                        'VIEW_INDEPENDENTxVIEW_DEPENDENT': pd.DataFrame(index=params_M5_name),
-                        'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT': pd.DataFrame(index=params_M6_name)
-                            }
-                        
-        data_verbose_debug = {}
-        res_evidence = pd.DataFrame(index=models_names)
-        trialwise_data = {}
-        bf_log_group = pd.DataFrame()
-        res_synth_tot = {}
-        
-        for vpn in unique_id:
-            #func calls & rand starts
-            print(vpn)
-
-            curr_data_vpn = data_AB[vpn]
-
-            # get data
-            stim_IDs_VI=    np.array(curr_data_vpn['stim_IDs_VI'])  #stimulus IDs of winning model 
-            new_ID=         np.array(curr_data_vpn['new_IDs'])      #trials where new ID is introduced 
-            n_prev_pres=    np.array(curr_data_vpn['n_prev_VI'])    #number_of_prev_presentations
-            stim_IDs_VD=    np.array(curr_data_vpn['stim_IDs_VD'])  #view dependent
-            VPN_output =    np.array(curr_data_vpn['answer'])       #VPN answers
-            verbose =       False
-
-            #data_All = [VPN_output, new_ID, numb_prev_presentations, stim_IDs_VI,stim_IDs_VD,verbose]
-
-            data_ALL = [VPN_output.astype(int), 
-                        new_ID.astype(int), 
-                        n_prev_pres.astype(int), 
-                        stim_IDs_VI, 
-                        stim_IDs_VD, 
-                        verbose]            
-
-            ########## Model Optim
-            
-            i=vpn
-            print('VIEW_INDIPENDENTxCONTEXT')
-    
-            bounds_M1 = [(0,1),(0,1),(.1,20),(0,2)]
-            
-            part_func_M1 = partial(VIEW_INDIPENDENTxCONTEXT,data_ALL,None) 
-            res1 = optimize.fmin_l_bfgs_b(part_func_M1,
-                                          approx_grad = True,
-                                          bounds = bounds_M1, 
-                                          x0 = [x_0_bfgs for i in range(len(bounds_M1))],
-                                          epsilon=epsilon_param)
-            
-            params_m_1 = res1[0]
-            m_1 = VIEW_INDIPENDENTxCONTEXT(data_ALL,None,params_m_1)
-                            
-            synthetic_data = VIEW_INDIPENDENTxCONTEXT_gen(data_ALL, None, params_m_1)
-            res_synth_tot[vpn] = synthetic_data
-        return res_synth_tot
             # re_evidence_subj = [(-1*i[1]) for i in [res1,res2,res3,res4,res5,res6]] + [rnd_choice]
             # res_evidence[i] = re_evidence_subj
             
@@ -1206,4 +1103,5 @@ class Apps_Tsakiris_2013:
         #     return (results_1,restotal,data_verbose_debug)
         # elif verbose_tot==False:
         #     return results_1
+
         
