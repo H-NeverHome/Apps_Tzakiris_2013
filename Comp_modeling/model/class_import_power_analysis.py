@@ -122,7 +122,7 @@ class power_analyses:
                 'param_alpha': 0.02}
     
     
-    def generate_data_pwr(self, min_sample,max_sample):
+    def generate_data_pwr(self, samples):
         path_ground_truth = self.path_to_groundtruth
         import numpy as np
         import pandas as pd
@@ -154,8 +154,8 @@ class power_analyses:
                       .07,
                       .07,
                       .09]
-        fig2_c_SD = np.array(fig2_c_SEM)*np.sqrt(15)
-    
+        fig2_c_SD_raw = np.array(fig2_c_SEM)
+        fig2_c_SD = (fig2_c_SD_raw*np.sqrt(at_sample_size))/2
         def bounds(x):
             if x<=.0:
                 return .0001
@@ -167,10 +167,10 @@ class power_analyses:
     
         res_beh_total = {}
         res_prob = {}
-        for sample_size in range(min_sample,max_sample):
-            print(str(sample_size-min_sample)+'/'+str(max_sample-min_sample))
+        for sample_size in samples:
+            print(str(sample_size))
             res_beh = {}
-            for sample in range(30):
+            for sample in range(5):
                 data_beh_synth = {}
                 data_prob_synth = []
                 for i in range(sample_size):
@@ -238,6 +238,150 @@ class power_analyses:
         from model_functions import VIEW_INDIPENDENTxCONTEXT,VIEW_DEPENDENT,VIEW_DEPENDENTxCONTEXT_DEPENDENT
         from model_functions import VIEW_INDEPENDENT, VIEW_INDEPENDENTxVIEW_DEPENDENT
         from model_functions import VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT,bic
+        from model_functions import VIEW_INDIPENDENTxCONTEXT_gen,VIEW_DEPENDENT_gen
+        import pandas as pd
+        import numpy as np
+        from functools import partial
+        from scipy import optimize,special
+        np.random.seed(1993)
+
+        ### Get data 
+        data_unform = self.clean_data 
+        data_A = data_unform['A']
+        data_B = data_unform['B']
+        data_AB = {**data_A,**data_B}
+        
+        #### get unique IDS
+        unique_id = list(data_AB.keys())
+
+        
+        epsilon_param = .01
+        x_0_bfgs = 0.5
+        params_M1_name = ['alpha', 'sigma', 'beta', 'lamd_a'] 
+        params_M2_name = ['alpha', 'beta', 'lamd_a']
+        params_M3_name = ['alpha', 'sigma', 'beta', 'lamd_a']
+        params_M4_name = ['alpha', 'beta', 'lamd_a']
+        params_M5_name = ['alpha_ind', 'alpha_dep', 'beta', 'lamd_a_ind', 'lamd_a_dep']
+        params_M6_name = ['alpha_ind', 'alpha_dep', 'sigma', 'beta', 'lamd_a_ind', 'lamd_a_dep']
+    
+        models_names = ['VIEW_INDIPENDENTxCONTEXT',
+                        'VIEW_DEPENDENT',
+                        'VIEW_DEPENDENTxCONTEXT_DEPENDENT',
+                        'VIEW_INDEPENDENT',
+                        'VIEW_INDEPENDENTxVIEW_DEPENDENT',
+                        'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT',
+                        'random_choice']
+        models_names_bic = ['VIEW_INDIPENDENTxCONTEXT',
+                            'VIEW_DEPENDENT',
+                            'VIEW_DEPENDENTxCONTEXT_DEPENDENT',
+                            'VIEW_INDEPENDENT',
+                            'VIEW_INDEPENDENTxVIEW_DEPENDENT',
+                            'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT']
+        
+        parameter_est = {'VIEW_INDIPENDENTxCONTEXT': pd.DataFrame(index=params_M1_name),
+                        'VIEW_DEPENDENT': pd.DataFrame(index=params_M2_name),
+                        'VIEW_DEPENDENTxCONTEXT_DEPENDENT': pd.DataFrame(index=params_M3_name),
+                        'VIEW_INDEPENDENT': pd.DataFrame(index=params_M4_name),
+                        'VIEW_INDEPENDENTxVIEW_DEPENDENT': pd.DataFrame(index=params_M5_name),
+                        'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT': pd.DataFrame(index=params_M6_name)
+                            }
+                        
+        data_verbose_debug = {}
+        res_evidence = pd.DataFrame(index=models_names)
+        trialwise_data = {}
+        bf_log_group = pd.DataFrame()
+        res_synth_tot = {}
+        res_synth_tot1 = {}
+        for vpn in unique_id:
+            #func calls & rand starts
+            print(vpn)
+
+            curr_data_vpn = data_AB[vpn]
+
+            # get data
+            stim_IDs_VI=    np.array(curr_data_vpn['stim_IDs_VI'])  #stimulus IDs of winning model 
+            new_ID=         np.array(curr_data_vpn['new_IDs'])      #trials where new ID is introduced 
+            n_prev_pres=    np.array(curr_data_vpn['n_prev_VI'])    #number_of_prev_presentations
+            stim_IDs_VD=    np.array(curr_data_vpn['stim_IDs_VD'])  #view dependent
+            VPN_output =    np.array(curr_data_vpn['answer'])       #VPN answers
+            verbose =       False
+
+            #data_All = [VPN_output, new_ID, numb_prev_presentations, stim_IDs_VI,stim_IDs_VD,verbose]
+
+            data_ALL = [VPN_output.astype(int), 
+                        new_ID.astype(int), 
+                        n_prev_pres.astype(int), 
+                        stim_IDs_VI, 
+                        stim_IDs_VD, 
+                        verbose]            
+
+            ########## Model Optim
+            
+            i=vpn
+            print('VIEW_INDIPENDENTxCONTEXT')
+    
+            bounds_M1 = [(0,1),(0,1),(.1,20),(0,2)]
+            
+            part_func_M1 = partial(VIEW_INDIPENDENTxCONTEXT,data_ALL,None) 
+            res1 = optimize.fmin_l_bfgs_b(part_func_M1,
+                                          approx_grad = True,
+                                          bounds = bounds_M1, 
+                                          x0 = [x_0_bfgs for i in range(len(bounds_M1))],
+                                          epsilon=epsilon_param)
+            
+            params_m_1 = res1[0]
+            m_1 = VIEW_INDIPENDENTxCONTEXT(data_ALL,None,params_m_1)
+            #synthetic_data_RND_param = VIEW_INDIPENDENTxCONTEXT_gen(data_ALL, synth_sample_N, params_m_1)         
+            synthetic_data = VIEW_INDIPENDENTxCONTEXT_gen(data_ALL, synth_sample_N, params_m_1)
+            synth_dat_DF = []
+            for dat in synthetic_data:
+                data_curr = pd.DataFrame()
+                data_curr['answer'] = dat
+                data_curr['stim_IDs_VI'] = stim_IDs_VI
+                data_curr['new_IDs'] = new_ID
+                data_curr['stim_IDs_VD'] = stim_IDs_VD
+                data_curr['n_prev_VI'] = list(curr_data_vpn['n_prev_VI'])
+                data_curr['n_prev_VD'] = list(curr_data_vpn['n_prev_VD'])
+                synth_dat_DF.append(data_curr)
+            
+            res_synth_tot[vpn] = synth_dat_DF
+            
+            print('VIEW_DEPENDENT')
+            bounds_M2 = [(0,1),(.1,20),(0,2)]
+            
+            part_func_M2 = partial(VIEW_DEPENDENT,data_ALL,None) 
+            res2 = optimize.fmin_l_bfgs_b(part_func_M2,
+                                          approx_grad = True,
+                                          bounds = bounds_M2, 
+                                          x0 = [x_0_bfgs for i in range(len(bounds_M2))],
+                                          epsilon=epsilon_param)
+
+            params_m_2 = res2[0]
+            m_2 = VIEW_DEPENDENT(data_ALL,None,params_m_1)
+            synthetic_data2 = VIEW_DEPENDENT_gen(data_ALL, synth_sample_N, params_m_2)
+            synth_dat_DF_2 = []
+            for dat in synthetic_data2:
+                data_curr = pd.DataFrame()
+                data_curr['answer'] = dat
+                data_curr['stim_IDs_VI'] = stim_IDs_VI
+                data_curr['new_IDs'] = new_ID
+                data_curr['stim_IDs_VD'] = stim_IDs_VD
+                data_curr['n_prev_VI'] = list(curr_data_vpn['n_prev_VI'])
+                data_curr['n_prev_VD'] = list(curr_data_vpn['n_prev_VD'])
+                synth_dat_DF_2.append(data_curr)            
+            
+            res_synth_tot1[vpn] = synth_dat_DF_2
+            
+        self.synth_data = res_synth_tot
+        return {'gen_view_ind_context': res_synth_tot,
+                'gen_view_dep':         res_synth_tot1}
+
+    def gen_data_rnd_param(self,synth_sample_N):
+        import os
+        os.chdir(self.path_to_modelfunctions)
+        
+        from model_functions import VIEW_INDIPENDENTxCONTEXT
+        from model_functions import bic
         from model_functions import VIEW_INDIPENDENTxCONTEXT_gen
         import pandas as pd
         import numpy as np
@@ -320,23 +464,27 @@ class power_analyses:
             i=vpn
             print('VIEW_INDIPENDENTxCONTEXT')
     
-            bounds_M1 = [(0,1),(0,1),(.1,20),(0,2)]
-            
-            part_func_M1 = partial(VIEW_INDIPENDENTxCONTEXT,data_ALL,None) 
-            res1 = optimize.fmin_l_bfgs_b(part_func_M1,
-                                          approx_grad = True,
-                                          bounds = bounds_M1, 
-                                          x0 = [x_0_bfgs for i in range(len(bounds_M1))],
-                                          epsilon=epsilon_param)
-            
-            params_m_1 = res1[0]
-            m_1 = VIEW_INDIPENDENTxCONTEXT(data_ALL,None,params_m_1)
-                            
-            synthetic_data = VIEW_INDIPENDENTxCONTEXT_gen(data_ALL, synth_sample_N, params_m_1)
+            bounds_M1 = [(.0,1),(.0,1),(.1,20),(.0,2)]
+
+            synthetic_RND_param = []
+            synthetic_data_RND_param = []
+            for sample in range(synth_sample_N):
+                rng1 = np.random.default_rng()
+                rng2 = np.random.default_rng()
+                rng3 = np.random.default_rng()
+                rng4 = np.random.default_rng()
+                aa = np.around(rng1.uniform(bounds_M1[0][0],bounds_M1[0][1],None),decimals=2)
+                bb = np.around(rng2.uniform(bounds_M1[1][0],bounds_M1[1][1],None),decimals=2)
+                cc = np.around(rng3.uniform(bounds_M1[2][0],bounds_M1[2][1],None),decimals=2)
+                dd = np.around(rng4.uniform(bounds_M1[3][0],bounds_M1[3][1],None),decimals=2)
+                rnd_params = (aa,bb,cc,dd)
+                curr_dat = VIEW_INDIPENDENTxCONTEXT_gen(data_ALL, 1, rnd_params)
+                synthetic_data_RND_param.append(curr_dat)
+                synthetic_RND_param.append(rnd_params)
             synth_dat_DF = []
-            for dat in synthetic_data:
+            for dat in synthetic_data_RND_param:
                 data_curr = pd.DataFrame()
-                data_curr['answer'] = dat
+                data_curr['answer'] = dat[0]
                 data_curr['stim_IDs_VI'] = stim_IDs_VI
                 data_curr['new_IDs'] = new_ID
                 data_curr['stim_IDs_VD'] = stim_IDs_VD
@@ -346,7 +494,7 @@ class power_analyses:
      
             
             
-            res_synth_tot[vpn] = synth_dat_DF
+            res_synth_tot[vpn] = (synth_dat_DF,synthetic_RND_param)
         self.synth_data = res_synth_tot
         return res_synth_tot
 
@@ -408,14 +556,15 @@ class power_analyses:
             
             print('VIEW_INDIPENDENTxCONTEXT')
     
+            #bounds_M1 = [(0,1),(0,1),(.1,20),(0,2)]
             bounds_M1 = [(0,1),(0,1),(.1,20),(0,2)]
-            
             part_func_M1 = partial(VIEW_INDIPENDENTxCONTEXT,data_ALL,None) 
             res1 = optimize.fmin_l_bfgs_b(part_func_M1,
                                           approx_grad = True,
                                           bounds = bounds_M1, 
                                           x0 = [x_0_bfgs for i in range(len(bounds_M1))],
-                                          epsilon=epsilon_param)
+                                          epsilon=epsilon_param,
+                                          m=100)
             parameter_est['VIEW_INDIPENDENTxCONTEXT'] = res1[0]
             
             ##### VIEW_DEPENDENT
@@ -497,6 +646,8 @@ class power_analyses:
             ### Subject BF_LOG
             post_prob = np.exp(re_evidence_subj[0]-special.logsumexp(np.array(re_evidence_subj)))
 
+            ### Compute Bic
+
     
             
             ############################## Verbose == True ###########################
@@ -558,8 +709,8 @@ class power_analyses:
         unique_id = [i for i in range(len(data))]
 
         
-        epsilon_param = .01
-        x_0_bfgs = 0.5
+        # epsilon_param = .01
+        # x_0_bfgs = 0.5
         params_M1_name = ['alpha', 'sigma', 'beta', 'lamd_a'] 
         params_M2_name = ['alpha', 'beta', 'lamd_a']
         params_M3_name = ['alpha', 'sigma', 'beta', 'lamd_a']
@@ -588,6 +739,12 @@ class power_analyses:
                         'VIEW_INDEPENDENTxVIEW_DEPENDENT': pd.DataFrame(index=params_M5_name),
                         'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT': pd.DataFrame(index=params_M6_name)
                             }
+        n_params = {'VIEW_INDIPENDENTxCONTEXT':                 len(params_M1_name),
+                    'VIEW_DEPENDENT':                           len(params_M2_name),
+                    'VIEW_DEPENDENTxCONTEXT_DEPENDENT':         len(params_M3_name),
+                    'VIEW_INDEPENDENT':                         len(params_M4_name),
+                    'VIEW_INDEPENDENTxVIEW_DEPENDENT':          len(params_M5_name),
+                    'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT':  len(params_M6_name)}
                         
         data_verbose_debug = {}
         res_evidence = pd.DataFrame(index=models_names)
@@ -611,9 +768,10 @@ class power_analyses:
                         stim_IDs_VD, 
                         verbose]     
             data_multp.append(data_ALL)
+        
         results123 = Parallel(n_jobs=-1,
                               verbose=0,
                               backend='loky')(delayed(fit)(k) for k in data_multp) 
-        return results123
+        return [results123,n_params]
         
            

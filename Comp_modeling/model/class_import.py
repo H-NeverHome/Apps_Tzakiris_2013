@@ -110,9 +110,7 @@ class Apps_Tsakiris_2013:
         if verbose == True:
             return final_dat
         
-        
-        
-
+ 
     def fit_data_seperate(self, verbose_tot):
         import os
         os.chdir(self.path_to_modelfunctions)

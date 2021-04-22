@@ -73,7 +73,8 @@ def view_dep_suppl_dat(stim_IDs_perspective):
     return unq_stim,numb_presentations
 
 def bic(n_param, sample_size, raw_LL):
-    bic = (n_param*np.log(sample_size))-(2*raw_LL)
+    #bic = (n_param*np.log(sample_size))-(2*raw_LL)
+    bic = raw_LL - (0.5*n_param*np.log(sample_size))## Bishop Book
     return bic
 
 ################################### Winning Model: INDIPENDENTxCONTEXT #############################################
@@ -254,7 +255,7 @@ def VIEW_INDIPENDENTxCONTEXT_gen(data,synth_sample_N,params):
             #get answer prob
             p_yes,p_no = answer_prob(beta,totfam)
             
-            pred_answer = np.random.binomial(1,p_yes)
+            pred_answer = np.random.binomial(1,np.around(p_yes,decimals=5))
             synth_dat.append(pred_answer)
             # if no CV
 
@@ -268,6 +269,10 @@ def VIEW_INDIPENDENTxCONTEXT_gen(data,synth_sample_N,params):
         synth_data_subj.append(synth_dat_fin)
         
     return synth_data_subj
+    
+
+
+# def VIEW_INDIPENDENTxCONTEXT_gen_RND(data,synth_sample_N,params):
     
 ##### CV
 
@@ -391,6 +396,64 @@ def VIEW_DEPENDENT_CV(params, old_fam, action):
     if action == 0:
         return np.log(p_no)
     
+def VIEW_DEPENDENT_gen(data,synth_sample_N, params):
+    alpha, beta, lamd_a = params[0], params[1], params[2]
+    VPN_output, new_ID, stim_IDs, stim_IDs_perspective, verbose = data[0],data[1],data[3],data[4],data[5]
+    
+    ''' Each stimulus presented from each of the 3 perspectives constitutes a new stimulus i.e. 24*3 Perspectives <= 72 possible stim IDs. BUT perspective is random - not necessary 72 unq stim 
+    Stimulus context does not play a role.'''
+    
+    unq_stim,numb_presentations = view_dep_suppl_dat(stim_IDs_perspective)
+
+    FP_rate_dep = FP_rate_dependent(lamd_a,VPN_output,numb_presentations)
+    synth_data_subj = []
+    for sample in range(synth_sample_N):
+        ### dict for Trackkeeping of history
+        history_V_depend = dict.fromkeys([str(i) for i in unq_stim[0]], [FP_rate_dep]) #set initial value of view_ind_fam as FP rate A&T pg.8 R
+    
+        history_answer = []
+        history_total = []
+        history_V_tot = []
+        ### inner loop through trials
+        synth_dat = []
+        #for stim_ID,action,num_pres,trial in zip(stim_IDs_perspective,VPN_output,numb_presentations,range(len(stim_IDs))):
+        for trial in range(len(stim_IDs)):
+      
+            stim_ID,action,num_pres = stim_IDs_perspective[trial], VPN_output[trial], numb_presentations[trial]
+            ### Get all data for current trial
+            old_fam = history_V_depend[stim_ID][-1] # previos stim familiarity
+            
+            ### Update view_dep familarity
+            new_fam,vfam_PE = update_view_dependent(lamd_a,alpha,old_fam)# compute new stim familiarity
+            
+            ### get totfam @ time t
+            totfam = new_fam    
+            
+            # protocol data
+            newfamlist = history_V_depend[stim_ID].copy() + [new_fam] # append new stim familiarity to list
+            history_V_depend[stim_ID] = newfamlist # replace list in dict
+            history_total.append(totfam)
+            history_V_tot.append(new_fam)
+            
+            # get answer prob
+            p_yes,p_no = answer_prob(beta,totfam)
+            
+            pred_answer = np.random.binomial(1,np.around(p_yes,decimals=5))
+            synth_dat.append(pred_answer)
+
+            if action == 1:
+                history_answer.append(p_yes)
+            if action == 0:
+                history_answer.append(p_no)
+            
+        synth_dat_fin = synth_dat
+        synth_data_subj.append(synth_dat_fin)
+        
+    return synth_data_subj
+
+
+
+
 
 
 ################################### Control Model: VIEW_DEPENDENTxCONTEXT_DEPENDENT MODEL #############################################

@@ -265,138 +265,95 @@ res_beh_power1 = res_abba.get_data(True)
 artificial data'''
 
 ### generate N datasets from each fitted model
-synth_data_gen = res_abba.gen_data(500)
+res_beh_power2 = res_abba.gen_data(100)
+#res_beh_power2 = res_abba.gen_data_rnd_param(100)
 
-### set params
-n_subsamples = 30 # N of subsamples
+#res12345_AA = {}
+#for res_beh_power2,curr_data in zip([res_beh_power_a,res_beh_power_b],['res_beh_power_a','res_beh_power_b']):
+keys = [i for i in res_beh_power2.keys() if 'A' in i]
+rawdata_subsample = []
+for key in keys:
+    #rawdata_subsample = rawdata_subsample + [(i,j) for i,j in zip(res_beh_power2[key][0],res_beh_power2[key][1])]
+    rawdata_subsample = rawdata_subsample + [i for i in res_beh_power2[key]]
 
-samplesizes_it_raw = [i for i in range(2,11)]#+[15,20,25,30,35,40] # size of samples
-samplesizes_it = samplesizes_it_raw[0::]
 
-### for either generating mechanisms, view-independentXcontext, view-dependence
-res_total_power = {}
-vpn_keys = [i for i in synth_data_gen.keys()]
-for gen_mech in vpn_keys:
-    print(gen_mech)
-    curr_gen_dat = synth_data_gen[gen_mech]
-    
-    ## for each timepoint
-    res_total_timepoint = {}
-    timpoints = ['A','B']
-    for t in timpoints:
-        
-        # list of subjects
-        keys = [i for i in curr_gen_dat.keys() if t in i]
-        rawdata_subsample = []
-        
-        #convert data to long list
-        for key in keys:
-            rawdata_subsample = rawdata_subsample + [i for i in curr_gen_dat[key]]
-        #res_123456 = {}
-        res_total_samplesize = {}
-        ### for each specified sample size
-        for sample_size in tqdm(samplesizes_it):
-            res_subsample = {}
-            ### for each subsample of size sample_size
-            for subsample in range(n_subsamples):
-                print(('subsample',subsample))
-                
-                ### take random sample from generated data
-                curr_dat_raw = random.sample(rawdata_subsample,sample_size)
-                curr_dat = [i for i in curr_dat_raw]
-                
-                ### fit data and generate samples        
-                res_gen_data1234,n_params =  res_abba.fit_data_seperate(curr_dat,True)
-                subj_lv_ev = pd.DataFrame(index = list(res_gen_data1234[0]['subject_level_model_evidence'].index))
-                for indx,data_res in enumerate(res_gen_data1234):
-                    subj_data = list(data_res['subject_level_model_evidence']['ev'])
-                    subj_lv_ev[str(indx)] = subj_data
-                    
-                ### compute BIC
-                subj_lv_bic_raw = subj_lv_ev.copy().T
-                subj_lv_bic_fin = pd.DataFrame()
-                group_lv_bic_fin = pd.DataFrame()
-                for model in n_params:
-                    curr_modelev = list(subj_lv_bic_raw[model])
-                    curr_nparams = n_params[model]
-                    res_bic_model = []
-                    #group_lv_bic_fin[model] = [bic(curr_nparams, sample_size, np.sum(curr_modelev))]
-                    for subj in curr_modelev:
-                        curr_bic = bic(curr_nparams, sample_size, subj)
-                        res_bic_model.append(curr_bic)
-                    subj_lv_bic_fin[model] = res_bic_model
-                subj_lv_bic_fin['random_choice'] =  list(subj_lv_bic_raw['random_choice'])
-                ### compute subjectwise post model probability of winning model
-                m_prob = []   
-                for indx in subj_lv_bic_raw.index:
-                    subj_BIC_win = np.exp(float(subj_lv_bic_raw.loc[indx]['VIEW_INDIPENDENTxCONTEXT']))
-                    subj_BIC_cntrl = np.exp(special.logsumexp(np.array(subj_lv_bic_raw.loc[indx])))
-                    subj_post_prob = np.around(subj_BIC_win/subj_BIC_cntrl,decimals=5)
-                    m_prob.append(subj_post_prob)
-                comparison_params = []
-                
-                #perform ttest procedure
-                tt_data = subj_lv_bic_fin.copy()
-                res_gen_data1234_TT = ttest_procedure(tt_data)
-                
-                ### compute groupwise post model probability
-                sum_BIC_win = float(subj_lv_bic_fin['VIEW_INDIPENDENTxCONTEXT'].sum())
-                sum_BIC_cntrl = special.logsumexp(np.array(subj_lv_bic_fin.sum(axis=0)))
-                post_prob = np.exp(np.around(sum_BIC_win-sum_BIC_cntrl,decimals=5))
-        
-        
-                res_subsample[str(subsample)] = {'ttest':                   res_gen_data1234_TT,
-                                                  'res_LL_subj':            subj_lv_ev,
-                                                  'BIC_subj':               subj_lv_bic_fin,
-                                                  'post_model_p_subj':      m_prob,
-                                                  'post_model_p_subj_M':    np.around(np.mean(m_prob),decimals=5),
-                                                  'post_model_p_group':     post_prob, 
-                                                  'param_comp':             comparison_params,
-                                                  'mean_power':             (np.mean(res_gen_data1234_TT['obs_power']), 
-                                                                              res_gen_data1234_TT['obs_power'])}
-                
-                
-            M_post_model_p_subj = np.mean([res_subsample[i]['post_model_p_subj_M']for i in res_subsample])
-            SD_post_model_p_subj = np.std([res_subsample[i]['post_model_p_subj_M']for i in res_subsample])
-        
-            M_post_model_p_group = np.mean([res_subsample[i]['post_model_p_group']for i in res_subsample])
-            SD_post_model_p_group = np.std([res_subsample[i]['post_model_p_group']for i in res_subsample])
-               
+res_123456 = {}
+### for each sample size *3
+for sample_size in tqdm([30]):
+    #äprint(sample_size*3)
+    res_subsample = {}
+    for subsample in range(5):
+        print(('subsample',subsample))
+        ### take random sample from generated data
+        curr_dat_raw = random.sample(rawdata_subsample,sample_size)
+        #curr_dat_params_RND = [i[1] for i in curr_dat_raw]
+        #curr_dat = [i[0] for i in curr_dat_raw]
+        curr_dat = [i for i in curr_dat_raw]
+        ### fit data and generate samples        
+        res_gen_data1234,n_params =  res_abba.fit_data_seperate(curr_dat,True)
+        # fit_param_view_ind_con = [i['subject_level_parameter-estimates']['VIEW_INDIPENDENTxCONTEXT'] for i in res_gen_data1234]
+        # comparison_params = pd.DataFrame()
+        # for i,j,num in zip(fit_param_view_ind_con,curr_dat_params_RND, range(len(curr_dat_params_RND))):
+        #     diff_param = np.absolute(np.array(i)-np.array(j))
+        #     comparison_params[num] = diff_param
+        # comparison_params['M'] = comparison_params.mean(axis=1)
+        # comparison_params['SD'] = comparison_params.std(axis=1)
+        # comparison_params.loc[0]
+        ###collect model evidence
+        subj_lv_ev = pd.DataFrame(index = list(res_gen_data1234[0]['subject_level_model_evidence'].index))
+        for indx,data_res in enumerate(res_gen_data1234):
+            subj_data = list(data_res['subject_level_model_evidence']['ev'])
+            subj_lv_ev[str(indx)] = subj_data
             
-            res_total_samplesize[str(sample_size)] = {
-                                            'res_tt_subsample':                         res_subsample,
-                                            'raw_post_model_p_subj':                    [res_subsample[i]['post_model_p_subj_M']for i in res_subsample],
-                                            'M_post_model_p_subj':                      M_post_model_p_subj,
-                                            'SD_post_model_p_subj':                     SD_post_model_p_subj,
-                                            'model_p_subj_95%_CI':{'upper_bound':       M_post_model_p_subj+(1.645*SD_post_model_p_subj/np.sqrt(sample_size)),
-                                                                   'lower_bound':       M_post_model_p_subj-(1.645*SD_post_model_p_subj/np.sqrt(sample_size)),
-                                                                   },
-                                            
-                                            'M_post_model_p_group':                     M_post_model_p_group,
-                                            'SD_post_model_p_group':                    SD_post_model_p_group,
-                                            'model_p_group_95%_CI':{'upper_bound':      M_post_model_p_group+(1.645*SD_post_model_p_group/np.sqrt(sample_size)),
-                                                                   'lower_bound':       M_post_model_p_group-(1.645*SD_post_model_p_group/np.sqrt(sample_size)),
-                                                                   }, 
-                                            
-                                            'raw_post_model_p_group':                   [res_subsample[i]['post_model_p_group']for i in res_subsample],                                  
-                                            'raw_sample_tt_power':                      [res_subsample[i]['mean_power'][0] for i in res_subsample],
-                                            'mean_sample_tt_power':                     np.mean([res_subsample[i]['mean_power'][0] for i in res_subsample])}
-            
-            # if last iteration append summary
-            if sample_size == samplesizes_it[-1]:
-                summary = pd.DataFrame(index = [i for i in samplesizes_it])
-                summary['m_post_prob'] = [res_total_samplesize[str(i)]['M_post_model_p_group'] for i in samplesizes_it]
-                summary['sd_post_prob'] = [res_total_samplesize[str(i)]['SD_post_model_p_group'] for i in samplesizes_it]
-                res_total_samplesize['summ'] = summary
-                
-        res_total_timepoint[t] = res_total_samplesize
+        ### compute BIC
+        subj_lv_bic_raw = subj_lv_ev.copy().T
+        subj_lv_bic_fin = pd.DataFrame()
+        group_lv_bic_fin = pd.DataFrame()
+        for model in n_params:
+            curr_modelev = list(subj_lv_bic_raw[model])
+            curr_nparams = n_params[model]
+            res_bic_model = []
+            #group_lv_bic_fin[model] = [bic(curr_nparams, sample_size, np.sum(curr_modelev))]
+            for subj in curr_modelev:
+                curr_bic = bic(curr_nparams, sample_size, subj)
+                res_bic_model.append(curr_bic)
+            subj_lv_bic_fin[model] = res_bic_model
+        m_prob = []   
+        
+        for indx in subj_lv_bic_raw.index:
+            subj_BIC_win = np.exp(float(subj_lv_bic_raw.loc[indx]['VIEW_INDIPENDENTxCONTEXT']))
+            subj_BIC_cntrl = np.exp(special.logsumexp(np.array(subj_lv_bic_raw.loc[indx])))
+            subj_post_prob = np.around(subj_BIC_win/subj_BIC_cntrl,decimals=5)
 
-    res_total_power[gen_mech] = res_total_timepoint
-
-
-
-
-
+            m_prob.append(subj_post_prob)
+        comparison_params = []
+        #perform ttest procedure
+        tt_data = subj_lv_bic_fin.copy()
+        res_gen_data1234_TT = ttest_procedure(tt_data)
+        ###logprob
+        
+        sum_BIC_win = float(subj_lv_bic_fin['VIEW_INDIPENDENTxCONTEXT'].sum())
+        sum_BIC_cntrl = special.logsumexp(np.array(subj_lv_bic_fin.sum(axis=0)))
+        post_prob = np.exp(np.around(sum_BIC_win-sum_BIC_cntrl,decimals=5))
+        # parameternoise??
+        #res_gen_data1234_pmp = np.exp(res_gen_data1234[1][0])/np.exp(special.logsumexp(list(res_gen_data1234[1])))
+        res_subsample[str(subsample)] = {'ttest':                   res_gen_data1234_TT,
+                                          'res_LL_subj':            subj_lv_ev,
+                                          'BIC_group':              group_lv_bic_fin,
+                                          'post_model_p_subj':      m_prob,
+                                          'post_model_p_subj_M':    np.around(np.mean(m_prob),decimals=5),
+                                          'post_model_p_group':     post_prob, 
+                                          'param_comp':             comparison_params,
+                                          'mean_power':             (np.mean(res_gen_data1234_TT['obs_power']), 
+                                                                      res_gen_data1234_TT['obs_power'])}
+        
+    res_123456[str(sample_size)] = {'res_subsample':            res_subsample,
+                                    'raw_post_model_p_subj':    [res_subsample[i]['post_model_p_subj_M']for i in res_subsample],
+                                    'M_post_model_p_subj':      np.mean([res_subsample[i]['post_model_p_subj_M']for i in res_subsample]),
+                                    'raw_post_model_p_group':    [res_subsample[i]['post_model_p_group']for i in res_subsample],
+                                    'M_post_model_p_group':      np.mean([res_subsample[i]['post_model_p_group']for i in res_subsample]),                                    
+                                    'raw_sample_power':         [res_subsample[i]['mean_power'][0] for i in res_subsample],
+                                    'mean_sample_power':        np.mean([res_subsample[i]['mean_power'][0] for i in res_subsample])}
 #res12345_AA[curr_data] = res_123456
 # # fitted_data_power = pd.DataFrame(index = ['ttest_arch_pwr', 'post_model_p'])
 # # for sample_size in res_123456.keys():
