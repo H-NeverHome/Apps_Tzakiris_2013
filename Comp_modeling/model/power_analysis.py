@@ -384,9 +384,10 @@ for gen_mech in vpn_keys:
             
             # if last iteration append summary
             if sample_size == samplesizes_it[-1]:
-                summary = pd.DataFrame(index = [i for i in samplesizes_it])
-                summary['m_post_prob'] = [res_total_samplesize[str(i)]['M_post_model_p_group'] for i in samplesizes_it]
-                summary['sd_post_prob'] = [res_total_samplesize[str(i)]['SD_post_model_p_group'] for i in samplesizes_it]
+                summary = pd.DataFrame(index = [i for i in range(n_subsamples)])
+                for ss in samplesizes_it:
+                    summary[str(ss)] = res_total_samplesize[str(ss)]['raw_post_model_p_group']
+                    summary = summary.round(5)
                 res_total_samplesize['summ'] = summary
                 
         res_total_timepoint[t] = res_total_samplesize
@@ -395,6 +396,70 @@ for gen_mech in vpn_keys:
 
 
 
+
+# import seaborn as sns
+# sns.set_theme(style="whitegrid")
+# sns.set_context("paper")
+# data = res_total_power['gen_view_ind_context']['A']['summ']
+# # Draw a nested violinplot and split the violins for easier comparison
+# sns.stripplot(data=data, palette = 'Blues')
+
+# plt.ylim(.8, 1.1)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+########## OLD ##########
 
 
 #res12345_AA[curr_data] = res_123456
