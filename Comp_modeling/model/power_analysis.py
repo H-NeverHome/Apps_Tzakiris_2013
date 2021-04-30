@@ -265,12 +265,13 @@ res_beh_power1 = res_abba.get_data(True)
 artificial data'''
 
 ### generate N datasets from each fitted model
-synth_data_gen = res_abba.gen_data(500)
+synth_dat_per_subj = 1000
+synth_data_gen = res_abba.gen_data(synth_dat_per_subj)
 
 ### set params
 n_subsamples = 30 # N of subsamples
 
-samplesizes_it_raw = [i for i in range(2,11)]#+[15,20,25,30,35,40] # size of samples
+samplesizes_it_raw = [i for i in range(2,15)]+[17,20,25,30,35,40] # size of samples
 samplesizes_it = samplesizes_it_raw[0::]
 
 ### for either generating mechanisms, view-independentXcontext, view-dependence
@@ -326,6 +327,7 @@ for gen_mech in vpn_keys:
                         res_bic_model.append(curr_bic)
                     subj_lv_bic_fin[model] = res_bic_model
                 subj_lv_bic_fin['random_choice'] =  list(subj_lv_bic_raw['random_choice'])
+                
                 ### compute subjectwise post model probability of winning model
                 m_prob = []   
                 for indx in subj_lv_bic_raw.index:
@@ -397,14 +399,82 @@ for gen_mech in vpn_keys:
 
 
 
-# import seaborn as sns
-# sns.set_theme(style="whitegrid")
-# sns.set_context("paper")
-# data = res_total_power['gen_view_ind_context']['A']['summ']
-# # Draw a nested violinplot and split the violins for easier comparison
-# sns.stripplot(data=data, palette = 'Blues')
 
-# plt.ylim(.8, 1.1)
+##### Save Data #####
+import os
+params_summ = pd.DataFrame()
+params_summ['n_subsamples'] = [n_subsamples]
+params_summ['synth_dat_per_subj'] = [synth_dat_per_subj]
+
+save_dat_path = r'C:\Users\de_hauk\HESSENBOX\FRAPPS_RR (Nestor Israel Zaragoza Jimenez)\Power_analysis\res'
+os.chdir(save_dat_path)
+
+dataA1 = res_total_power['gen_view_dep']['A']['summ']
+dataA2 = res_total_power['gen_view_ind_context']['A']['summ']
+dataB1 = res_total_power['gen_view_dep']['B']['summ']
+dataB2 = res_total_power['gen_view_ind_context']['B']['summ']
+
+dataA1.to_csv(save_dat_path+'/gen_view_dep_A_summ.csv', 
+              sep=',',
+              index = True)
+dataA2.to_csv(save_dat_path+'/gen_view_ind_context_A_summ.csv', 
+              sep=',',
+              index = True)
+dataB1.to_csv(save_dat_path+'/gen_view_dep_B_summ.csv', 
+              sep=',',
+              index = True)
+dataB2.to_csv(save_dat_path+'/gen_view_ind_context_B_summ.csv', 
+              sep=',',
+              index = True)
+
+params_summ.to_csv(save_dat_path+'/params_summ.csv', 
+              sep=',',
+              index = True)
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+sns.set_theme(style="whitegrid")
+sns.set_context("paper")
+fig, axs = plt.subplots(2,2,sharey = True,sharex = True)
+### fontsizes
+fs_xticks = 16
+fs_yticks = fs_xticks
+fs_axs_titles = 20
+
+
+
+fig.suptitle('Posterior model probability of the winning model given generative mechanisms', fontsize=fs_axs_titles+2)
+fig.set_size_inches(20, 12, forward=True)
+plte = 'Blues'
+
+
+
+### gen view-ind X context
+sns.boxplot(data=dataA2, palette = plte, ax = axs[0,0])
+
+axs[0,0].set_title('T 1', fontsize=fs_axs_titles)
+axs[0,0].set_ylabel('view-independent X context', fontsize=fs_axs_titles)
+
+
+sns.boxplot(data=dataB2, palette = plte,ax = axs[0,1] )
+axs[0,1].set_title('T 2', fontsize=fs_axs_titles)
+
+### gen view-dependent
+#A
+sns.boxplot(data=dataA1, palette = plte,ax = axs[1,0])
+
+#B
+sns.boxplot(data=dataB1, palette = plte,ax = axs[1,1] )
+axs[1,0].set_ylabel('view-dependent', fontsize=fs_axs_titles)
+axs[1,0].set_xlabel('sample size', fontsize=fs_axs_titles)
+axs[1,1].set_xlabel('sample size', fontsize=fs_axs_titles)
+
+
+axs[1,1].tick_params(axis='both', which='major', labelsize=fs_xticks)
+axs[1,0].tick_params(axis='both', which='major', labelsize=fs_xticks)
+axs[0,0].tick_params(axis='both', which='major', labelsize=fs_xticks)
+
+fig.savefig('unlimited_power.png', dpi=300)
 
 
 

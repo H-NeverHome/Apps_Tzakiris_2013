@@ -960,6 +960,8 @@ def VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT_CV(params,old_fam_depend,old_fam_ind
         return np.log(p_no)
 
 
+# ################################### CV #############################################
+
 def data_cv(data_vpn):
     from model_functions import VIEW_INDIPENDENTxCONTEXT,VIEW_DEPENDENT,VIEW_DEPENDENTxCONTEXT_DEPENDENT
     from model_functions import VIEW_INDEPENDENT, VIEW_INDEPENDENTxVIEW_DEPENDENT
@@ -990,13 +992,7 @@ def data_cv(data_vpn):
                 stim_IDs_VI, 
                 stim_IDs_VD, 
                 verbose] 
-    
-    # cv_scores = {'VIEW_INDIPENDENTxCONTEXT'                 :[],
-    #              'VIEW_DEPENDENT'                           :[],
-    #              'VIEW_DEPENDENTxCONTEXT_DEPENDENT'         :[],
-    #              'VIEW_INDEPENDENT'                         :[],
-    #              'VIEW_INDEPENDENTxVIEW_DEPENDENT'          :[],
-    #              'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT'  :[]}
+
     cv_scores =   {'VIEW_INDIPENDENTxCONTEXT'                 :[],
                  'VIEW_DEPENDENT'                           :[],
                  'VIEW_DEPENDENTxCONTEXT_DEPENDENT'         :[],
@@ -1004,8 +1000,7 @@ def data_cv(data_vpn):
                  'VIEW_INDEPENDENTxVIEW_DEPENDENT'          :[],
                  'VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT'  :[]}
     for trial in range(len(VPN_output)):
-        
-
+        #print((unique_id,trial))
         epsilon_param = .01
         x_0_bfgs = 0.5
         params_M1_name = ['alpha', 'sigma', 'beta', 'lamd_a'] 
@@ -1042,7 +1037,7 @@ def data_cv(data_vpn):
         
         ########## Model Optim
         
-        #print('VIEW_INDIPENDENTxCONTEXT')
+        print('VIEW_INDIPENDENTxCONTEXT')
 
         bounds_M1 = [(0,1),(0,1),(.1,20),(0,2)]
         
@@ -1138,20 +1133,13 @@ def data_cv(data_vpn):
         parameter_est['VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT'] = res6[0]
         m_6 = VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT(data_ALL_debug,None, params_m_6)
         
-        # if trial == 2:
         cv_scores['VIEW_INDIPENDENTxCONTEXT'].append(np.log(m_1[1]['history_answer'][trial]))
         cv_scores['VIEW_DEPENDENT'].append(np.log(m_2[1]['history_answer'][trial]))
         cv_scores['VIEW_DEPENDENTxCONTEXT_DEPENDENT'].append(np.log(m_3[1]['history_answer'][trial]))
         cv_scores['VIEW_INDEPENDENT'].append(np.log(m_4[1]['history_answer'][trial]))
         cv_scores['VIEW_INDEPENDENTxVIEW_DEPENDENT'].append(np.log(m_5[1]['history_answer'][trial]))
         cv_scores['VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT'].append(np.log(m_6[1]['history_answer'][trial]))
-        
-        # cv_scores['VIEW_INDIPENDENTxCONTEXT'].append(m_1)
-        # cv_scores['VIEW_DEPENDENT'].append(m_2)
-        # cv_scores['VIEW_DEPENDENTxCONTEXT_DEPENDENT'].append(m_3)
-        # cv_scores['VIEW_INDEPENDENT'].append(m_4)
-        # cv_scores['VIEW_INDEPENDENTxVIEW_DEPENDENT'].append(m_5)
-        # cv_scores['VIEW_INDEPENDENTxVIEW_DEPENDENTxCONTEXT'].append(m_6)
+
     cv_scores['VIEW_INDIPENDENTxCONTEXT'] = np.array(cv_scores['VIEW_INDIPENDENTxCONTEXT']).sum()
     cv_scores['VIEW_DEPENDENT'] = np.array(cv_scores['VIEW_DEPENDENT']).sum()
     cv_scores['VIEW_DEPENDENTxCONTEXT_DEPENDENT'] = np.array(cv_scores['VIEW_DEPENDENTxCONTEXT_DEPENDENT']).sum()

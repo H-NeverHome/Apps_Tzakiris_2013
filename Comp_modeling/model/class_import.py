@@ -13,6 +13,7 @@ class Apps_Tsakiris_2013:
         self.path_to_data = data_path
         self.path_to_groundtruth = ground_truth_file
         self.path_to_modelfunctions = path_to_modelfunc
+
         
     def get_data(self,verbose):
         
@@ -168,6 +169,7 @@ class Apps_Tsakiris_2013:
                         
         data_verbose_debug = {}
         res_evidence = pd.DataFrame(index=models_names)
+        res_subj_BIC_proc = pd.DataFrame(index=models_names)
         trialwise_data = {}
         bf_log_group = pd.DataFrame()
         
@@ -283,9 +285,19 @@ class Apps_Tsakiris_2013:
             ##### RND Choice model
             rnd_choice = np.sum([np.log(0.5) for i in range(len(VPN_output))])
             
-            re_evidence_subj = [(-1*i[1]) for i in [res1,res2,res3,res4,res5,res6]] + [rnd_choice]
+            #### Collect model evidence
+            res_ev_raw = [(-1*i[1]) for i in [res1,res2,res3,res4,res5,res6]]
+            re_evidence_subj = res_ev_raw + [rnd_choice]
             res_evidence[i] = re_evidence_subj
             
+            #### Calc subj BIC
+            res_subj_BIC = []
+            for model,ev in zip(models_names,res_ev_raw):
+                n_params = len(list(parameter_est[model].keys()))
+                sample_size = len(list(data_A.keys()))
+                subj_BIC = bic(n_params, sample_size, ev)
+                res_subj_BIC.append(subj_BIC)
+            res_subj_BIC_proc[i] = res_subj_BIC + [rnd_choice]
             ### Subject BF_LOG
             bf_log_subj = re_evidence_subj[0]-special.logsumexp(np.array(re_evidence_subj[1::]))
             bf_log_group[i + '_BF_log'] = [bf_log_subj]
@@ -340,10 +352,13 @@ class Apps_Tsakiris_2013:
         
         ### some calculation
         restotal = res_evidence.sum(axis=1)
+        restotal_BIC = res_subj_BIC_proc.sum(axis=1)
         group_level_me_A = res_evidence[[i for i in res_evidence if 'A' in i]].sum(axis=1)
         group_level_me_B = res_evidence[[i for i in res_evidence if 'B' in i]].sum(axis=1)
+        group_level_BIC_A = res_subj_BIC_proc[[i for i in res_subj_BIC_proc if 'A' in i]].sum(axis=1)
+        group_level_BIC_B = res_subj_BIC_proc[[i for i in res_subj_BIC_proc if 'B' in i]].sum(axis=1)       
         
-        ##### BIC calc
+        ##### BIC group calc
         indxs = ['bic','raw_LL','n_params', 'sample_size']
         bic_fit_A= pd.DataFrame(index=indxs)
         bic_fit_B= pd.DataFrame(index=indxs)
@@ -358,22 +373,35 @@ class Apps_Tsakiris_2013:
                 elif time == 'B':
                     raw_LL = group_level_me_B[model]
                     bic_curr = bic(n_params, sample_size, raw_LL)
-                    bic_fit_B[model] = [bic_curr,raw_LL,n_params, sample_size]        
+                    bic_fit_B[model] = [bic_curr,raw_LL,n_params, sample_size]  
+        
+        ### Group Post Model Prob
+        post_model_win = pd.DataFrame()
+        for time_data,time in zip([group_level_me_A,group_level_me_B],['A','B']):
+            sum_subj_BIC = time_data.loc[models_names_bic[0]]
+            curr_mod_prob = special.logsumexp(np.array(time_data))
+            post_prob = np.exp(sum_subj_BIC-curr_mod_prob)
+            post_model_win['win_model_' + time] = [post_prob]
+        bf_log_group[i + '_BF_log'] = [bf_log_subj]
         ## summarize data
         results_1 = {'subject_level_model_evidence':res_evidence,
-                    'group_level_me_A': group_level_me_A,
-                    'group_level_me_B': group_level_me_B,
-                    'group_level_me_AB':restotal,
-                    'group_level_BIC_A':bic_fit_A,
-                    'group_level_BIC_B':bic_fit_B,
-                    'used_data': data_AB,
-                    'subject_level_parameter-estimates':parameter_est,
-                    'subject_level_trialwise_data_win_model':trialwise_data}
+                     'res_subj_BIC_proc':res_subj_BIC_proc,
+                     'group_level_me_A': group_level_me_A,
+                     'group_level_me_B': group_level_me_B,
+                     'group_level_me_AB':restotal,
+                     'group_level_BIC_A':group_level_BIC_A,
+                     'group_level_BIC_B':group_level_BIC_B,
+                     'group_level_BIC_AB':restotal_BIC,
+                     'used_data': data_AB,
+                     'subject_level_parameter-estimates':parameter_est,
+                     'subject_level_trialwise_data_win_model':trialwise_data,
+                     'group_winmodel_post':post_model_win}
         self.fit_separate = results_1
         if verbose_tot==True:
-            return (results_1,restotal,data_verbose_debug)
+            return (results_1,data_verbose_debug)
         elif verbose_tot==False:
             return results_1
+
 
     def fit_data_combined(self):
         
@@ -647,12 +675,13 @@ class Apps_Tsakiris_2013:
         self.combined_fit = res_evidence
         return res_evidence
 
-    def RFX_modelselection(self, fit_data):       
+
+    def RFX_modelselection(self):       
         import matlab.engine
         import numpy as np
         eng = matlab.engine.start_matlab()
         #see https://mbb-team.github.io/VBA-toolbox/wiki/BMS-for-group-studies/#between-conditions-rfx-bms
-        data_raw = fit_data['subject_level_model_evidence'].copy()
+        data_raw = self.fit_separate['res_subj_BIC_proc'].copy()
         data_clms = [i for i in data_raw.columns]
         a_t = data_raw[[i for i in data_clms if 'A' in i]]
         b_t = data_raw[[i for i in data_clms if 'B' in i]]
@@ -672,12 +701,17 @@ class Apps_Tsakiris_2013:
         # exceedance probability of no larger difference in models across conditions
         #ex_prob = 1-float(non_exceedence_prob)
         return ('non_exceedence_prob',non_exceedence_prob)
+
         
     def behavioral_performance(self):
         import pandas as pd
+        import numpy as np
+        
+        
         data_raw = self.clean_data 
-        data_A = data_raw['A']
-        data_B = data_raw['B']
+        time_points = ['A','B']
+        data_A = data_raw[time_points[0]]
+        data_B = data_raw[time_points[1]]
         data_AB = {**data_A,**data_B}
         unq_ids = list(data_AB.keys())
         stimulus_len = len(self.groundtruth.index)
@@ -687,19 +721,30 @@ class Apps_Tsakiris_2013:
         m_performance = pd.DataFrame(index=['M_%_correct',
                                             'M_n_errors',
                                             'M_missings',])
+        quality_crit = pd.DataFrame()
         for vpn in unq_ids:
+            #get dataframe per subj
             curr_dat = data_AB[vpn]
+            
+            ## egt quality indices
             missings = stimulus_len-len(curr_dat.index)
             perc_correct = (curr_dat['perf'].sum()/len(curr_dat.index))*100
             n_errors = len(curr_dat.index)-curr_dat['perf'].sum()
+            
+            ## get performance criterion
+            q_crit_10_11_12 = curr_dat.loc[curr_dat['n_prev_VI'] >= 10]
+            q_crit_10_11_12_M = np.around(q_crit_10_11_12['perf'].mean(),decimals=2)
+            
             if 'A' in vpn:
                 data_perf_A[vpn] = [perc_correct,
                                     n_errors,
                                     missings]
+                quality_crit[vpn] = [q_crit_10_11_12_M]
             elif 'B' in vpn:
                 data_perf_B[vpn] = [perc_correct,
                                     n_errors,
                                     missings]
+                quality_crit[vpn] = [q_crit_10_11_12_M]
         
         m_performance['M_A'] = list(data_perf_A.copy().mean(axis=1))
         m_performance['SD_A']= list(data_perf_A.copy().std(axis=1))
@@ -710,7 +755,9 @@ class Apps_Tsakiris_2013:
                    'res_B':data_perf_B,
                    'M_res_AB':m_performance}
         self.behav_perf = results
-        return results
+        return {'results':results,
+                'used_data':data_raw,
+                'q_crit': quality_crit}
     
             
     def learning_effect(self):       
@@ -722,58 +769,102 @@ class Apps_Tsakiris_2013:
         data_B = data_raw['B']
         data_AB = {**data_A,**data_B}
         unq_ids = list(data_AB.keys())
-        
-        df_1_3_L_A = []
-        df_10_10_L_A = []
-        df_1_3_L_B = []
-        df_10_10_L_B = []
-        for vpn in unq_ids:
-            curr_dat = data_AB[vpn]
-            df_1_2_3 = curr_dat.loc[curr_dat['n_prev_VI'] <=3]['answer'].sum()/len(curr_dat.loc[curr_dat['n_prev_VI'] <=3]['answer'].index)
-            df_10_11_12 = curr_dat.loc[curr_dat['n_prev_VI'] >=10]['answer'].sum()/len(curr_dat.loc[curr_dat['n_prev_VI'] >=10]['answer'].index)
-            if 'A' in vpn:   
-                df_1_3_L_A.append(df_1_2_3)
-                df_10_10_L_A.append(df_10_11_12)
-            elif 'B' in vpn:
-                df_1_3_L_B.append(df_1_2_3)
-                df_10_10_L_B.append(df_10_11_12)
-                
-        p_answer = pd.DataFrame(index=['1','2','3'])
-        p_answer['A_1_3'] = df_1_3_L_A
-        p_answer['B_1_3'] = df_1_3_L_B
-        p_answer['A_10_12'] = df_10_10_L_A
-        p_answer['B_10_12'] = df_10_10_L_B
-        
-        
-        res_A = pg.ttest(p_answer['A_10_12'],p_answer['A_1_3'],paired = True)
-        res_B = pg.ttest(p_answer['B_10_12'],p_answer['B_1_3'],paired = True)
-        
-        res = pd.DataFrame(index = [i for i in res_A.columns])
-        res['A_1_2_3_vs_10_11_12'] = res_A.loc['T-test']
-        res['B_1_2_3_vs_10_11_12'] = res_B.loc['T-test']
-        
-        #AT_2013 effectsize
-        # reconstruct effectsize from apps&tsakiris study
-        observed_D = pg.compute_effsize_from_t(14.661, N=16, eftype='cohen')
-        req_N = pg.power_ttest(d=observed_D,
-                               power=.95,
-                               alpha = .0001,
-                               n=None)
-        mean_pyes = pd.DataFrame()
-        for i in p_answer:
-            mean_pyes[i] = [p_answer[i].mean()]
+        res_total = {}
+        #### learning effect for correct answers and for total 'yes' answers
+        for variable in ['perf', 'answer']:
+            df_1_3_L_A = []
+            df_10_10_L_A = []
+            df_1_3_L_B = []
+            df_10_10_L_B = []
+            #['perf', 'answer']
+            #variable = 'answer'
+            for vpn in unq_ids:
+                curr_dat = data_AB[vpn]
+                df_1_2_3 = curr_dat.loc[curr_dat['n_prev_VI'] <=3][variable].sum()/len(curr_dat.loc[curr_dat['n_prev_VI'] <=3][variable].index)
+                df_10_11_12 = curr_dat.loc[curr_dat['n_prev_VI'] >=10][variable].sum()/len(curr_dat.loc[curr_dat['n_prev_VI'] >=10][variable].index)
+                if 'A' in vpn:   
+                    df_1_3_L_A.append(df_1_2_3)
+                    df_10_10_L_A.append(df_10_11_12)
+                elif 'B' in vpn:
+                    df_1_3_L_B.append(df_1_2_3)
+                    df_10_10_L_B.append(df_10_11_12)
+                    
+            p_answer = pd.DataFrame(index=['1','2','3'])
+            p_answer['A_1_3'] = df_1_3_L_A
+            p_answer['B_1_3'] = df_1_3_L_B
+            p_answer['A_10_12'] = df_10_10_L_A
+            p_answer['B_10_12'] = df_10_10_L_B
+            
+            
+            res_A = pg.ttest(p_answer['A_10_12'],p_answer['A_1_3'],paired = True)
+            res_B = pg.ttest(p_answer['B_10_12'],p_answer['B_1_3'],paired = True)
+            
+            res = pd.DataFrame(index = [i for i in res_A.columns])
+            res['A_1_2_3_vs_10_11_12'] = res_A.loc['T-test']
+            res['B_1_2_3_vs_10_11_12'] = res_B.loc['T-test']
+            
 
-        power_analysis = {'AT_t':14.661,
+            mean_pyes = pd.DataFrame(index = ['%_M','%_SD'])
+            for i in p_answer:
+                mean_pyes[i] = [p_answer[i].mean(),p_answer[i].std()]
+                                
+            tot_res = {'used_dat':data_raw,
+                       'proc_data':p_answer,
+                       'res_ttest':res,
+                       'descriptives':mean_pyes}
+            res_total[variable] = tot_res
+            
+        ##### AT_2013 effectsize
+        # reconstruct effectsize from apps&tsakiris study
+        observed_D = pg.compute_effsize_from_t(tval = 14.661,
+                                               N=16,
+                                               eftype='cohen')
+        observed_power = pg.power_ttest(d=observed_D,
+                                        power=None,
+                                        alpha =.0001,
+                                        n=16)   
+         
+        req_N = pg.power_ttest(d=observed_D,
+                               power=.90,
+                               alpha =.02,
+                               n=None)   
+         
+        power_analysis = {'AT_observed_tval':14.661,
                           'AT_N':16,
-                          'AT_recon_D':observed_D,
-                          'AT_req_N':req_N}
-                            
-        tot_res = {'used_dat':data_raw,
-                   'proc_data':p_answer,
-                   'res_ttest':res,
-                   'proc_M':mean_pyes,
-                   'AT_ES_D_poweranalysis':power_analysis}
-        return tot_res
+                          'AT_recalc_effectsize':observed_D,
+                          'req_N_for_replication':req_N,
+                          'observed_power': observed_power}
+        res_total['AT_ES_D_poweranalysis'] = power_analysis
+        
+        
+        ##### Our analysis -> Only on CORRECT Yes-Answers
+        # 
+        res_tt_correct = pd.DataFrame(res_total['perf']['res_ttest']['A_1_2_3_vs_10_11_12'])
+        res_tt_correct['B_1_2_3_vs_10_11_12'] = res_total['perf']['res_ttest']['B_1_2_3_vs_10_11_12']
+        es_D_T1 = res_total['perf']['res_ttest']['A_1_2_3_vs_10_11_12'].loc['cohen-d'] 
+        es_D_T2 = res_total['perf']['res_ttest']['B_1_2_3_vs_10_11_12'].loc['cohen-d'] 
+        # arch_pwr_T1 = res_total['perf']['res_ttest']['A_1_2_3_vs_10_11_12'].loc['power'] 
+        # arch_pwr_T2 = res_total['perf']['res_ttest']['B_1_2_3_vs_10_11_12'].loc['power']
+        # pval_T1 = res_total['perf']['res_ttest']['A_1_2_3_vs_10_11_12'].loc['p-val'] 
+        # pval_T2 = res_total['perf']['res_ttest']['B_1_2_3_vs_10_11_12'].loc['p-val']
+        # pval_T1 = res_total['perf']['res_ttest']['A_1_2_3_vs_10_11_12'].loc['T'] 
+        # pval_T2 = res_total['perf']['res_ttest']['B_1_2_3_vs_10_11_12'].loc['T'] 
+        
+        req_N_T1 = pg.power_ttest(d=es_D_T1,
+                                  power=.90,
+                                  alpha =.02,
+                                  n=None)   
+        req_N_T2 = pg.power_ttest(d=es_D_T2,
+                                  power=.90,
+                                  alpha =.02,
+                                  n=None) 
+          
+        power_analysis_perf = {'req_N_T1_perf':req_N_T1,
+                               'res_t':res_tt_correct,
+                               'req_N_T2_perf':req_N_T2}
+        res_total['req_n_performance'] = power_analysis_perf
+        return res_total
+
     
     def task_reliability(self):
         # ICC
@@ -866,6 +957,7 @@ class Apps_Tsakiris_2013:
                 'lambda_mult_model_selection':lmbda_mult,
                 'LR_fin': ll_fin}  
 
+
     def corr_LR(self):
         import pandas as pd
         import numpy as np
@@ -918,21 +1010,31 @@ class Apps_Tsakiris_2013:
     
 
     def time_agn10_LR(self):
+        ''' time-agnostic log-likelihood difference converted to normal 
+        probability i.e. relative likelihood. Shows the difference in probability between observing the 
+        data under a common set of params vs. under seperate sets of params.
+        A relative likelihood of >1 indicates a better model-fit for the 
+        combined ML params'''
         import numpy as np
         import pandas as pd
-        res_fit_sep = self.fit_separate['group_level_me_AB']
+        ### time agn LR with BIC correction
+        res_fit_sep_curr = self.fit_separate['subject_level_model_evidence'].sum(axis=1)
         res_fit_comb = self.combined_fit.sum(axis=1)
-        model_names = list(res_fit_sep.index)
+        model_names = list(res_fit_sep_curr.index)
         res_time_agn10 = pd.DataFrame(index = ['fit_comb','fit_sep','LR_agn_10'])
         for model in model_names:
-            curr_sep = res_fit_sep[model]
-            curr_comb = res_fit_comb[model]
-            curr_agn_10 = curr_comb-curr_sep
-            res_time_agn10[model] = [curr_comb,curr_sep,curr_agn_10]
-        return res_time_agn10
+            curr_sep = res_fit_sep_curr.loc[model]
+            curr_comb = res_fit_comb.loc[model]
+            curr_agn_10 = np.around(np.exp(curr_comb-curr_sep),decimals = 2)
+            res_time_agn10[model] = np.array([curr_comb, curr_sep, curr_agn_10])
+        return {'results': res_time_agn10,
+                'res_fit_sep_curr':res_fit_sep_curr,
+                'res_fit_comb':res_fit_comb
+                
+                }
             
     def fit_data_separate_LOOCV(self):
-            ##########
+        ##########
         import pandas as pd
         import numpy as np
         from functools import partial
@@ -964,8 +1066,8 @@ class Apps_Tsakiris_2013:
         os.chdir(self.path_to_modelfunctions)
 
         if __name__ == 'class_import':   
-            results123 = Parallel(n_jobs=8,
-                                  verbose=45,
+            results123 = Parallel(n_jobs=-1,
+                                  verbose=50,
                                   backend='loky')(delayed(data_cv)(i) for i in data_job)    
             
             index_models = [i for i in results123[0][1]]
@@ -981,11 +1083,11 @@ class Apps_Tsakiris_2013:
             group_level_CV_B = data_res_tot[[i for i in data_res_tot if 'B' in i]].sum(axis=1)
             data_res_tot['A_sum'] = data_res_tot[[i for i in data_res_tot if 'A' in i]].sum(axis=1)
             data_res_tot['B_sum'] = data_res_tot[[i for i in data_res_tot if 'B' in i]].sum(axis=1)
-            return_dat = {'raw_results_CV':results123,
-                          'subj_level_CV':data_res_tot,
-                          'group_level_CV_A':group_level_CV_A,
-                          'group_level_CV_B':group_level_CV_B
-                          }
+            return_dat = {'raw_results_CV':     results123,
+                          'subj_level_CV':      data_res_tot,
+                          'group_level_CV_A':   group_level_CV_A,
+                          'group_level_CV_B':   group_level_CV_B}
+                          
             return return_dat     
         
     def ttest_procedure(self):
@@ -995,10 +1097,10 @@ class Apps_Tsakiris_2013:
         ''' 
         As described in Apps & Tsakiris, we ran a series of independent
         two-sided t-tests and corrected via Benjamini–Hochberg false discovery
-        rate (FDR)
+        rate (FDR) on the BIC
         '''
         
-        data_fit = self.fit_separate['subject_level_model_evidence']
+        data_fit = self.fit_separate['res_subj_BIC_proc']
         data_A = data_fit[[i for i in data_fit if 'A' in i]]
         data_B = data_fit[[i for i in data_fit if 'B' in i]]
         
@@ -1034,72 +1136,9 @@ class Apps_Tsakiris_2013:
                                              alpha=0.02,
                                              method='fdr_bh')[1]
         
-        return_dict={'t_test_A':fdr_dat_A,
-                     't_test_B':fdr_dat_B}
+        return_dict={'t_test_A':fdr_dat_A.T,
+                     't_test_B':fdr_dat_B.T}
         return return_dict
         
-
-
-    
-            # re_evidence_subj = [(-1*i[1]) for i in [res1,res2,res3,res4,res5,res6]] + [rnd_choice]
-            # res_evidence[i] = re_evidence_subj
-            
-            # ### Subject BF_LOG
-            # bf_log_subj = re_evidence_subj[0]-special.logsumexp(np.array(re_evidence_subj[1::]))
-            # bf_log_group[i + '_BF_log'] = [bf_log_subj]
-    
-            
-            # ############################## Verbose == True ###########################
-            
-            #     res_debug = {models_names[0]: m_1,
-            #                  models_names[1]: m_2,
-            #                  models_names[2]: m_3,
-            #                  models_names[3]: m_4,
-            #                  models_names[4]: m_5,
-            #                  models_names[5]: m_6}
-            #     data_verbose_debug[i] = res_debug
-                
-        # #### Get winning model trialwise dat ####
-        #     params_m_1 = res1[0]
-        #     res_M1 = VIEW_INDIPENDENTxCONTEXT(data_ALL_debug,None, params_m_1)        
-    
-        #     trialwise_data[i] = res_M1[1]['data_store_1']
-        
-        # ### some calculation
-        # restotal = res_evidence.sum(axis=1)
-        # group_level_me_A = res_evidence[[i for i in res_evidence if 'A' in i]].sum(axis=1)
-        # group_level_me_B = res_evidence[[i for i in res_evidence if 'B' in i]].sum(axis=1)
-        
-        # ##### BIC calc
-        # indxs = ['bic','raw_LL','n_params', 'sample_size']
-        # bic_fit_A= pd.DataFrame(index=indxs)
-        # bic_fit_B= pd.DataFrame(index=indxs)
-        # for time_data,time in zip([group_level_me_A,group_level_me_B],['A','B']):
-        #     for model in models_names_bic:
-        #         n_params = len(list(parameter_est[model].index))
-        #         sample_size = len([i for i in res_evidence if 'A' in i])
-        #         if time == 'A':
-        #             raw_LL = group_level_me_A[model]
-        #             bic_curr = bic(n_params, sample_size, raw_LL)
-        #             bic_fit_A[model] = [bic_curr,raw_LL,n_params, sample_size]
-        #         elif time == 'B':
-        #             raw_LL = group_level_me_B[model]
-        #             bic_curr = bic(n_params, sample_size, raw_LL)
-        #             bic_fit_B[model] = [bic_curr,raw_LL,n_params, sample_size]        
-        # ## summarize data
-        # results_1 = {'subject_level_model_evidence':res_evidence,
-        #             'group_level_me_A': group_level_me_A,
-        #             'group_level_me_B': group_level_me_B,
-        #             'group_level_me_AB':restotal,
-        #             'group_level_BIC_A':bic_fit_A,
-        #             'group_level_BIC_B':bic_fit_B,
-        #             'used_data': data_AB,
-        #             'subject_level_parameter-estimates':parameter_est,
-        #             'subject_level_trialwise_data_win_model':trialwise_data}
-        # self.fit_separate = results_1
-        # if verbose_tot==True:
-        #     return (results_1,restotal,data_verbose_debug)
-        # elif verbose_tot==False:
-        #     return results_1
 
         
