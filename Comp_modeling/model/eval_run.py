@@ -81,7 +81,15 @@ if not os.path.exists(res_reliability_path):
     
 res_reliability['corr'].to_html(res_reliability_path + '\\reliability_CORR.html')
 res_reliability['icc'].to_html(res_reliability_path + '\\reliability_ICC.html')
-        
+  
+########## Comp Modelling pwr
+save_dat_path = r'C:\Users\de_hauk\HESSENBOX\FRAPPS_RR (Nestor Israel Zaragoza Jimenez)\Power_analysis\res'
+
+res_comp_pwr = data_analyses.comp_model_pwr(1000, 
+                                            30,
+                                            (2,20),
+                                            save_dat_path)
+      
 ########## Between-time model fitting/ seperate for each timepoint
 # save model fit
 res_fit_sep_path = res_path + '\\between_time_model_fit'
@@ -115,10 +123,6 @@ res_ttest['t_test_B'].to_html(res_fit_sep_path + '\\t_test_B.html')
 
 ##### LOOCV score
 res_CV = data_analyses.fit_data_separate_LOOCV()
-# # Save LOOCV score
-# res_LOOCV_path = res_path + '\\LOOCV'
-# if not os.path.exists(res_LOOCV_path):
-#     os.makedirs(res_LOOCV_path)
     
 pd.DataFrame(res_CV['subj_level_CV']).to_html(res_fit_sep_path + '\\subj_level_CV.html')
 
@@ -145,4 +149,3 @@ rfx_res[res_RFX[0]] = [res_RFX[1]]
 rfx_res.to_html(within_time_modelfit + '\\rfx_res.html')
 
 
-# ## Todo: save data to html!!!!
